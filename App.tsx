@@ -1,20 +1,19 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'react-native';
+
+import { useFonts, Poppins_600SemiBold } from '@expo-google-fonts/poppins'
+
+import { NativeBaseProvider } from 'native-base';
+
+import { Loading } from '@components/Loading';
+import { Routes } from '@routes/index';
 
 export default function App() {
+  const [fonstLoaded] = useFonts({ Poppins_600SemiBold })
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+      <NativeBaseProvider>
+        <StatusBar barStyle="light-content" backgroundColor='transparent' translucent />
+        {fonstLoaded ? <Routes /> : <Loading />}
+      </NativeBaseProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

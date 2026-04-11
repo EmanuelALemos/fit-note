@@ -2,14 +2,14 @@
   "expo": {
     "name": "FitNote",
     "slug": "FitNote",
-    "version": "1.0.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#404040"
     },
     "ios": {
       "supportsTablet": true
@@ -17,11 +17,20 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "backgroundColor": "#404040"
+      },
+      "package": "com.emanuel_alemos.FitNote"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "712c9cdf-ec60-4e5e-b8d4-cdae3bd78bee"
+      }
     }
   }
 }

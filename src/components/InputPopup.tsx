@@ -1,0 +1,87 @@
+import React, { useEffect, useState } from 'react';
+import { Modal, Button, Input, View, Text, FormControl } from 'native-base';
+
+import { AntDesign } from '@expo/vector-icons';
+
+interface InputPopupProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (inputText: string) => void;
+    initialText?: string | undefined; // Optional prop for editing
+    title: string;
+}
+
+export function InputPopup({ isOpen, onClose, onSave, initialText, title }: InputPopupProps) {
+    const [inputText, setInputText] = useState(initialText || '');
+
+    useEffect(() => {
+        if (isOpen) {
+            setInputText(initialText || '');
+        }
+    }, [initialText, isOpen]);
+
+    const handleSave = () => {
+        onSave(inputText);
+        setInputText(''); // Reset input field after saving
+        onClose(); // Close the modal
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} size="lg">
+            {/* Estilizar a área fora do modal */}
+            <Modal.Content bg="#525252" maxWidth="400px" borderRadius="20px">
+                <Modal.CloseButton />
+                <Modal.Header bg='#525252'>
+                    <Text fontSize="lg" color="white" fontFamily={'Poppins_600SemiBold'} allowFontScaling={false} >
+                        {initialText ? `Editar ${title}` : `Novo ${title}`}
+                    </Text>
+                </Modal.Header>
+
+                <Modal.Body>
+                    <FormControl>
+                        <FormControl.Label>
+                            <Text color="white" fontFamily={'Poppins_600SemiBold'} allowFontScaling={false} >{title}</Text>
+                        </FormControl.Label>
+                        <Input
+                            variant="filled"
+                            placeholder={`Digite o ${title}`}
+                            value={inputText}
+                            onChangeText={(text) => setInputText(text)}
+                            bg="#404040"
+                            color="white"
+                            borderColor="transparent"
+                            _focus={{ borderColor: '#FFF' }}
+                            fontFamily={'Poppins_600SemiBold'}
+                        />
+                    </FormControl>
+                </Modal.Body>
+
+                <Modal.Footer bg='#525252'>
+                    <Button.Group space={2} flex={1}>
+                        <Button bg='#525252' onPress={onClose} flex={1}>
+                            <View flexDirection='row'>
+                                <Text
+                                    fontFamily={'Poppins_600SemiBold'}
+                                    color='white'
+                                    mr={2}
+                                    allowFontScaling={false}
+                                >
+                                    Cancelar
+                                </Text>
+                                <AntDesign name='closesquare' color='#D9F99D' size={20} />
+                            </View>
+                        </Button>
+                        <Button onPress={handleSave} bg="#525252" flex={1}>
+                            <View flexDirection='row' alignItems={'center'}>
+                                <Text fontFamily={'Poppins_600SemiBold'} color='white' mr={2}  allowFontScaling={false}>
+                                    {initialText ? 'Salvar Alterações' : `Criar ${title}`}
+                                </Text>
+                                <AntDesign name='checksquare' color='#D9F99D' size={20} />
+                            </View>
+                        </Button>
+                    </Button.Group>
+                </Modal.Footer>
+            </Modal.Content>
+        </Modal>
+    );
+}
