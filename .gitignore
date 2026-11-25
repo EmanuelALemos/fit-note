@@ -33,3 +33,6 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# backups com dados reais
+fitnote-backup-*.json

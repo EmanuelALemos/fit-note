@@ -7,6 +7,7 @@ import BackgroundImage from '@assets/padrões.png';
 import Add from '@assets/MAIS.png';
 
 import { ButtonAdd } from '@components/ButtonAdd';
+import { BackupButton } from '@components/BackupButton';
 import { Card } from '@components/Card';
 
 import { InputPopup } from '@components/InputPopup';
@@ -179,6 +180,8 @@ export function Training() {
                     <ButtonAdd onPress={handleAddNewTraining} title='ADICIONE SEU TREINO' />
                 </View>
             }
+
+            <BackupButton />
 
             <InputPopup
                 isOpen={modalOpen}
