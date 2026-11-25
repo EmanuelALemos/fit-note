@@ -58,7 +58,7 @@ export function HistoryChart({ sessions, metric, recordId, start, end }: History
     }
 
     const unit = metricUnit(metric);
-    const description = `${points.length} sessões, de ${formatNumber(values[0])}${unit} a ${formatNumber(values[values.length - 1])}${unit}`;
+    const description = `${points.length} ${points.length === 1 ? 'sessão' : 'sessões'}, de ${formatNumber(values[0])}${unit} a ${formatNumber(values[values.length - 1])}${unit}`;
 
     return (
         <View>
