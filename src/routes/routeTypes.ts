@@ -2,8 +2,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 export type RootStackParamList = {
     training: undefined;
-    exercise: { trainingName: string };
-    series: { exerciseName: string };
+    exercise: { trainingId: number; trainingName: string };
+    series: { exerciseId: number; exerciseName: string };
 };
 
 export type TrainingScreenProps = NativeStackScreenProps<RootStackParamList, 'training'>;
