@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React from "react"
 
 import { View, Text } from "native-base"
 import { TouchableOpacity } from "react-native"
@@ -13,7 +13,7 @@ interface SerieHeaderCardProps {
 
 export function SerieHeaderCard({ series, onAddSerie, onRemoveSerie }: SerieHeaderCardProps) {
     return (
-        <View flexDirection='row' bg='#525252' mb={6} mt={36} w='90%' h={'20'} borderRadius={14} alignItems='center' justifyContent='space-between' p={4}>
+        <View flexDirection='row' bg='#525252' mb={6} w='100%' h={'20'} borderRadius={14} alignItems='center' justifyContent='space-between' p={4}>
             <Text fontFamily={'Poppins_600SemiBold'} fontSize={24} color='white'  allowFontScaling={false} >
                 SÉRIES
             </Text>
@@ -24,7 +24,7 @@ export function SerieHeaderCard({ series, onAddSerie, onRemoveSerie }: SerieHead
                     onPress={onRemoveSerie}
                     disabled={series <= 0}
                 >
-                    <AntDesign name="minussquare" size={32} color='#404040' />
+                    <AntDesign name="minussquare" size={32} color={series <= 0 ? '#404040' : '#D9F99D'} />
                 </TouchableOpacity>
 
                 <Text

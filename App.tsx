@@ -2,6 +2,7 @@ import { StatusBar } from 'react-native';
 
 import { useFonts, Poppins_600SemiBold } from '@expo-google-fonts/poppins'
 
+import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { NativeBaseProvider } from 'native-base';
 
 import { Loading } from '@components/Loading';
@@ -11,7 +12,7 @@ export default function App() {
   const [fonstLoaded] = useFonts({ Poppins_600SemiBold })
 
   return (
-      <NativeBaseProvider>
+      <NativeBaseProvider initialWindowMetrics={initialWindowMetrics}>
         <StatusBar barStyle="light-content" backgroundColor='transparent' translucent />
         {fonstLoaded ? <Routes /> : <Loading />}
       </NativeBaseProvider>

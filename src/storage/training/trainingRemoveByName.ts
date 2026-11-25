@@ -1,22 +1,11 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { TRAINING_COLLECTION } from "@storage/storageConfig";
+import { updateCollection } from "@storage/storageQueue";
 
-import { trainingsGetAll } from "./trainingsGetAll";
-import { exerciseRemoveAll } from "@storage/exercise/exerciseRemoveAll";
+import { TrainingStorageDTO } from "./TrainingStorageDTO";
 
-
-export async function trainingRemoveByName(trainingDeleted: string) {
-    try{
-        const storedTrainings = await trainingsGetAll();
-
-        if(storedTrainings.length === 1){
-            await exerciseRemoveAll();
-        }
-        const trainings = storedTrainings.filter(training => training?.name !== trainingDeleted);
-
-        await AsyncStorage.setItem(TRAINING_COLLECTION, JSON.stringify(trainings))
-    }catch(error){
-        throw error;
-    }
+// Remove só o treino: os exercícios e as cargas são compartilhados e continuam salvos.
+export function trainingRemoveByName(trainingDeleted: string) {
+    return updateCollection<TrainingStorageDTO>(TRAINING_COLLECTION, trainings =>
+        trainings.filter(training => training.name !== trainingDeleted)
+    );
 }

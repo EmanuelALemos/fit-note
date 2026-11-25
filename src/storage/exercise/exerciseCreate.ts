@@ -1,25 +1,15 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { EXERCISE_COLLECTION } from "@storage/storageConfig";
+import { updateCollection } from "@storage/storageQueue";
+import { AppError } from "@utils/AppError";
 
 import { ExerciseStorageDTO } from "./ExerciseStorageDTO";
-import { AppError } from "@utils/AppError";
-import { exerciseGetAll } from "./exerciseGetAll";
 
-export async function exerciseCreate(newExercise: ExerciseStorageDTO) {
-    try{
-        const storedExercises = await exerciseGetAll();
-
-        const exerciseAlreadyExists = storedExercises.some(
-            (exercise: ExerciseStorageDTO) => exercise?.name === newExercise.name
-        );
-
-        if(exerciseAlreadyExists){
-            return new AppError('Já existe um Exercício cadastrado com esse nome.');
+export function exerciseCreate(newExercise: ExerciseStorageDTO) {
+    return updateCollection<ExerciseStorageDTO>(EXERCISE_COLLECTION, exercises => {
+        if (exercises.some(exercise => exercise.name === newExercise.name)) {
+            throw new AppError('Já existe um Exercício cadastrado com esse nome.');
         }
 
-        const storage = JSON.stringify([...storedExercises, newExercise])
-        await AsyncStorage.setItem(EXERCISE_COLLECTION, storage);
-    }catch(error){
-        throw error;
-    }
+        return [...exercises, newExercise];
+    });
 }

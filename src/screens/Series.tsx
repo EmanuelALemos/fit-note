@@ -1,158 +1,121 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 
 import { View, Text, Image } from "native-base";
 
 import BackgroundImage from "@assets/padrões.png";
-import { TouchableOpacity, FlatList, Alert } from "react-native";
-import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
-
-import { AntDesign } from "@expo/vector-icons";
+import { FlatList, Alert } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SerieHeaderCard } from "@components/SerieHeaderCard";
 import { SerieBodyCard } from "@components/SerieBodyCard";
 import { ExerciseLoadCard } from "@components/ExerciseLoadCard";
 import { Header } from "@components/Header";
+import { InputPopup } from "@components/InputPopup";
+import { Loading } from "@components/Loading";
 
 import { exerciseGetByName } from "@storage/exercise/exerciseGetByName";
 import { exerciseEditLoad } from "@storage/exercise/exerciseEditLoad";
-import { InputPopup } from "@components/InputPopup";
 import { exerciseAddSerie } from "@storage/exercise/exerciseAddSerie";
-import { SeriesStorageDTO } from "@storage/series/SeriesStorageDTO";
-import { exerciseRemoveSerie } from "@storage/exercise/exerciseRemoveSerie";
-import { exerciseAddRepetition } from "@storage/exercise/exerciseAddRepetition";
-import { exerciseRemoveRepetition } from "@storage/exercise/exerciseRemoveRepetiton";
+import { exerciseRemoveLastSerie } from "@storage/exercise/exerciseRemoveLastSerie";
+import { exerciseChangeRepetitions } from "@storage/exercise/exerciseChangeRepetitions";
 
-interface RouteParams {
-    exerciseName: string;
-}
+import { SeriesScreenProps } from "@routes/routeTypes";
+import { formatLoad, parseLoad } from "@utils/load";
 
-interface SerieType {
-    name: string;
-    repetitions: number;
-}
+export function Series({ navigation, route }: SeriesScreenProps) {
 
-export function Series() {
+    const { exerciseName } = route.params;
 
-    const route = useRoute();
+    const insets = useSafeAreaInsets();
 
-    const { exerciseName } = route.params as RouteParams;
-
-    const navigation = useNavigation();
-
-    const [series, setSeries] = useState<SerieType[]>([]);
-    const [load, setLoad] = useState<number | undefined>(0);
+    const [repetitions, setRepetitions] = useState<number[]>([]); // uma posição por série
+    const [load, setLoad] = useState(0);
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingLoad, setEditingLoad] = useState('0');
-    const [serieNumber, setSerieNumber] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
 
-    async function handleAddSerie() {
-        try {
-
-            const newSerie: SeriesStorageDTO = {
-                repetitions: 0,
-                exerciseId: exerciseName,
-                name: `${serieNumber + 1}° série`
-            }
-
-            await exerciseAddSerie(exerciseName, newSerie)
-            setSerieNumber(serieNumber + 1);
-            getExercise();
-        } catch (error) {
-            Alert.alert('Erro', 'Não foi possível adicionar a série');
-            console.log(error);
-        }
-    }
-
-    async function handleRemoveSerie(exerciseName: string, serieName: string) {
-        try {
-            await exerciseRemoveSerie(exerciseName, serieName);
-            setSerieNumber(serieNumber - 1);
-
-            getExercise();
-        } catch (error) {
-            Alert.alert('Erro', 'Não foi possível remover a série');
-            console.error(error);
-        }
-    }
-
-    async function handleAddRepetition(exerciseName: string, serieName: string) {
-        try {
-            await exerciseAddRepetition(exerciseName, serieName);
-
-            getExercise();
-        } catch (error) {
-            Alert.alert('Erro', 'Não foi possível adicionar a repetição');
-            console.log(error);
-        }
-    }
-
-    async function handleRemoveRepetition(exerciseName: string, serieName: string) {
-        try {
-            await exerciseRemoveRepetition(exerciseName, serieName);
-
-            getExercise();
-        } catch (error) {
-            Alert.alert('Erro', 'Não foi possível remover a repetição');
-            console.log(error);
-        }
-    }
-
+    const pendingWrites = useRef(0);
 
     async function getExercise() {
         try {
             const exercise = await exerciseGetByName(exerciseName);
 
-            const seriesStored = exercise?.series;
-            const loadExercise = exercise?.load;
-
-            const series = seriesStored?.map((serie) => {
-                return {
-                    name: serie.name,
-                    repetitions: serie.repetitions,
-                };
-            })
-
-            if (series) {
-                setSeries(series);
-                setSerieNumber(series.length);
+            // Há toques mais novos que esta leitura: a última escrita recarrega a tela.
+            if (pendingWrites.current > 0) {
+                return;
             }
-            setLoad(loadExercise);
+
+            setRepetitions(exercise?.series?.map(serie => serie.repetitions) ?? []);
+            setLoad(exercise?.load ?? 0);
         } catch (error) {
             Alert.alert('Erro', 'Não foi possível carregar o exercício');
             console.error(error);
+        } finally {
+            setIsLoading(false);
         }
     }
 
+    // Atualiza a tela na hora e confere com o que foi gravado quando os toques param.
+    async function write(optimisticUpdate: () => void, save: () => Promise<void>, errorMessage: string) {
+        pendingWrites.current++;
+        optimisticUpdate();
+
+        try {
+            await save();
+        } catch (error) {
+            Alert.alert('Erro', errorMessage);
+            console.log(error);
+        } finally {
+            pendingWrites.current--;
+
+            if (pendingWrites.current === 0) {
+                getExercise();
+            }
+        }
+    }
+
+    function handleAddSerie() {
+        write(
+            () => setRepetitions(current => [...current, 0]),
+            () => exerciseAddSerie(exerciseName),
+            'Não foi possível adicionar a série'
+        );
+    }
+
+    function handleRemoveSerie() {
+        write(
+            () => setRepetitions(current => current.slice(0, -1)),
+            () => exerciseRemoveLastSerie(exerciseName),
+            'Não foi possível remover a série'
+        );
+    }
+
+    function handleChangeRepetitions(serieIndex: number, delta: number) {
+        write(
+            () => setRepetitions(current => current.map((value, index) =>
+                index === serieIndex ? Math.max(0, value + delta) : value
+            )),
+            () => exerciseChangeRepetitions(exerciseName, serieIndex, delta),
+            'Não foi possível alterar as repetições'
+        );
+    }
 
     async function handleSave(inputText: string) {
+        const newLoad = parseLoad(inputText);
+
+        if (newLoad === null) {
+            Alert.alert('Erro', `"${inputText}" não é uma carga válida`);
+            return;
+        }
+
         try {
-            const load = parseInt(inputText);
-
-            if (isNaN(load)) {
-                Alert.alert('Erro', `${inputText} não é um número válido`);
-                return;
-            }
-            await handleEditLoad(load);
+            await exerciseEditLoad(exerciseName, newLoad);
+            setLoad(newLoad);
             setModalOpen(false);
-
         } catch (error) {
             Alert.alert('Erro', 'Não foi possível salvar a carga');
             console.error(error);
         }
-    }
-
-    async function handleEditLoad(load: number) {
-        try {
-            await exerciseEditLoad(exerciseName, load);
-            setLoad(load);
-        } catch (error) {
-            console.error(error);
-        }
-    }
-
-    function handleEditLoadClick() {
-        setEditingLoad(String(load));
-        setModalOpen(true);
     }
 
     useFocusEffect(useCallback(() => {
@@ -167,55 +130,51 @@ export function Series() {
                 title={exerciseName.toUpperCase()}
                 onBackPress={() => navigation.goBack()}
             />
-            
-            <SerieHeaderCard series={serieNumber} onAddSerie={handleAddSerie} onRemoveSerie={() => handleRemoveSerie(exerciseName, `${serieNumber}° série`)} />
 
-            {serieNumber === 0 ? (
-                <View mt={100} alignItems='center'>
-                    <Text color='white' fontSize={24} fontFamily={'Poppins_600SemiBold'}  allowFontScaling={false} >
-                        Nenhuma série cadastrada
-                    </Text>
-                </View>
+            {isLoading ? (
+                <Loading />
             ) : (
-                // Container com altura flexível para a lista
-                <View flex={1} alignItems='center' justifyContent='flex-start' style={{ marginBottom: 150 }}>
+                <View flex={1} w='100%' px={6} pt={6}>
+                    <SerieHeaderCard
+                        series={repetitions.length}
+                        onAddSerie={handleAddSerie}
+                        onRemoveSerie={handleRemoveSerie}
+                    />
+
                     <FlatList
-                        data={series}
-                        keyExtractor={item => item.name}
-                        renderItem={({ item }) => (
+                        data={repetitions}
+                        keyExtractor={(_, index) => String(index)}
+                        renderItem={({ item, index }) => (
                             <SerieBodyCard
-                                serie={item.name}
-                                onAddRepetition={() => handleAddRepetition(exerciseName, item.name)}
-                                onRemoveRepetition={() => handleRemoveRepetition(exerciseName, item.name)}
-                                repetitions={item.repetitions}
+                                serie={`${index + 1}ª série`}
+                                onAddRepetition={() => handleChangeRepetitions(index, 1)}
+                                onRemoveRepetition={() => handleChangeRepetitions(index, -1)}
+                                repetitions={item}
                             />
                         )}
+                        ListEmptyComponent={
+                            <Text mt={10} textAlign='center' color='white' fontSize={24} fontFamily={'Poppins_600SemiBold'} allowFontScaling={false}>
+                                Nenhuma série cadastrada
+                            </Text>
+                        }
                         showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{
-                            alignItems: 'center',
-                            paddingRight: 24,
-                            paddingLeft: 24,
-                        }}
-                        style={{
-                            maxHeight: 440, // Limita a altura da FlatList para evitar sobreposição
-                        }}
+                        style={{ flex: 1 }}
                     />
+
+                    <View pt={4} style={{ paddingBottom: insets.bottom + 24 }}>
+                        <ExerciseLoadCard load={load} onPressEdit={() => setModalOpen(true)} />
+                    </View>
                 </View>
             )}
-
-            {/* Card de Carga posicionado abaixo da lista */}
-            <View position='absolute' bottom={12} left={5}>
-                <ExerciseLoadCard load={load} onPressEdit={handleEditLoadClick} />
-            </View>
 
             <InputPopup
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
                 onSave={handleSave}
-                initialText={editingLoad}
+                initialText={formatLoad(load)}
                 title='Carga'
+                keyboardType='decimal-pad'
             />
         </View>
-
     );
 }
