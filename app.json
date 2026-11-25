@@ -26,6 +26,12 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0f25bfd2-f616-4fc4-a297-5dec50a403b0"
+      }
+    },
+    "owner": "emanuel_araujo20"
   }
 }
