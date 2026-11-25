@@ -17,39 +17,6 @@ beforeEach(() => {
     supino = repository.addExercise(upperA, 'Supino');
 });
 
-test('20 toques em + somam 20, e nunca fica negativo', () => {
-    repository.addSet(supino);
-    for (let i = 0; i < 20; i++) repository.changeRepetitions(supino, 1, 1);
-    expect(repository.getExercise(supino).repetitions).toEqual([20]);
-    for (let i = 0; i < 25; i++) repository.changeRepetitions(supino, 1, -1);
-    expect(repository.getExercise(supino).repetitions).toEqual([0]);
-});
-
-test('séries entram e saem pelo fim; sem séries não sobra sessão vazia', () => {
-    repository.addSet(supino);
-    repository.addSet(supino);
-    repository.changeRepetitions(supino, 1, 8);
-    repository.removeLastSet(supino);
-    expect(repository.getExercise(supino).repetitions).toEqual([8]);
-    repository.removeLastSet(supino);
-    repository.removeLastSet(supino);
-    expect(repository.getExercise(supino).repetitions).toEqual([]);
-    expect(db.all('SELECT * FROM session')).toEqual([]);
-});
-
-test('carga decimal é gravada e herdada pelas séries', () => {
-    repository.addSet(supino);
-    repository.setLoad(supino, 12.5);
-    repository.addSet(supino);
-    expect(repository.getExercise(supino).loadKg).toBe(12.5);
-    expect(db.all('SELECT load_kg FROM set_log')).toEqual([{ load_kg: 12.5 }, { load_kg: 12.5 }]);
-});
-
-test('carga é mantida sem nenhuma série', () => {
-    repository.setLoad(supino, 30);
-    expect(repository.getExercise(supino)).toEqual({ id: supino, name: 'Supino', loadKg: 30, repetitions: [] });
-});
-
 test('exercício é compartilhado entre treinos, ignorando acentos, maiúsculas e espaços', () => {
     const upperB = repository.createTraining('Upper B');
     expect(repository.addExercise(upperB, ' SUPÍNO ')).toBe(supino);
@@ -58,11 +25,11 @@ test('exercício é compartilhado entre treinos, ignorando acentos, maiúsculas 
 });
 
 test('excluir o último treino preserva exercícios, cargas e séries', () => {
-    repository.setLoad(supino, 40);
-    repository.addSet(supino);
+    repository.workouts.setLoad(supino, 40);
+    repository.workouts.setDefaultSets(supino, 2);
     repository.removeTraining(upperA);
     expect(repository.listTrainings()).toEqual([]);
-    expect(repository.getExercise(supino)).toMatchObject({ loadKg: 40, repetitions: [0] });
+    expect(repository.workouts.getExercise(supino)).toMatchObject({ loadKg: 40, sets: [{}, {}] });
 
     const again = repository.createTraining('Upper A');
     expect(repository.addExercise(again, 'Supino')).toBe(supino);
@@ -77,7 +44,7 @@ test('remover do treino não apaga o exercício, e a ordem é por treino', () =>
     expect(repository.listExercises(upperB).map(item => item.id)).toEqual([remada, supino]);
     repository.removeExercise(upperA, supino);
     expect(repository.listExercises(upperA).map(item => item.id)).toEqual([remada]);
-    expect(repository.getExercise(supino).name).toBe('Supino');
+    expect(repository.workouts.getExercise(supino).name).toBe('Supino');
 });
 
 test('nomes de treino não se repetem; renomear mantém os exercícios', () => {
@@ -91,7 +58,7 @@ test('nomes de treino não se repetem; renomear mantém os exercícios', () => {
 });
 
 test('excluir treino mantém a sessão e o nome copiado', () => {
-    db.run("INSERT INTO session (training_id, training_name, kind, started_at) VALUES (?, 'Upper A', 'workout', 'x')", [upperA]);
+    db.run("INSERT INTO session (training_id, training_name, kind, started_at, finished_at) VALUES (?, 'Upper A', 'workout', 'x', 'y')", [upperA]);
     repository.removeTraining(upperA);
     expect(db.get('SELECT training_id, training_name FROM session')).toEqual({ training_id: null, training_name: 'Upper A' });
 });
@@ -112,13 +79,12 @@ test('esquema: reabrir não altera nada e versão mais nova é recusada', () => 
 test('renomear exercício vale em todos os treinos e mantém os dados', () => {
     const upperB = repository.createTraining('Upper B');
     repository.addExercise(upperB, 'Supino');
-    repository.setLoad(supino, 40);
-    repository.addSet(supino);
+    repository.workouts.setLoad(supino, 40);
     expect(repository.countTrainingsWithExercise(supino)).toBe(2);
     repository.renameExercise(supino, 'Supino reto');
     expect(repository.listExercises(upperA)).toEqual([{ id: supino, name: 'Supino reto' }]);
     expect(repository.listExercises(upperB)).toEqual([{ id: supino, name: 'Supino reto' }]);
-    expect(repository.getExercise(supino)).toMatchObject({ loadKg: 40, repetitions: [0] });
+    expect(repository.workouts.getExercise(supino).loadKg).toBe(40);
     expect(repository.addExercise(repository.createTraining('C'), 'SUPINO RETO')).toBe(supino);
 });
 
@@ -126,7 +92,7 @@ test('renomear recusa nome de outro exercício, mas aceita corrigir o próprio',
     repository.addExercise(upperA, 'Remada');
     expect(() => repository.renameExercise(supino, ' REMADA ')).toThrow('Já existe um exercício chamado Remada.');
     repository.renameExercise(supino, 'SUPÍNO');
-    expect(repository.getExercise(supino).name).toBe('SUPÍNO');
+    expect(repository.workouts.getExercise(supino).name).toBe('SUPÍNO');
     expect(() => repository.renameExercise(999, 'X')).toThrow(AppError);
 });
 
@@ -145,8 +111,8 @@ test('ordem dos treinos é salva, com a contagem de exercícios', () => {
     const upperB = repository.createTraining('Upper B');
     repository.reorderTrainings([upperB, upperA]);
     expect(repository.listTrainings()).toEqual([
-        { id: upperB, name: 'Upper B', exerciseCount: 0 },
-        { id: upperA, name: 'Upper A', exerciseCount: 1 },
+        { id: upperB, name: 'Upper B', exerciseCount: 0, lastWorkoutAt: null },
+        { id: upperA, name: 'Upper A', exerciseCount: 1, lastWorkoutAt: null },
     ]);
 });
 

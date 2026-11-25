@@ -5,7 +5,7 @@ import { Database, SqlValue } from './Database';
 import { applyImport } from './legacy/applyImport';
 import { parseLegacyData } from './legacy/legacyData';
 import { Duplicate, planImport } from './legacy/planImport';
-import { isDatabaseEmpty, SCHEMA_VERSION, TABLES } from './schema';
+import { CLOSE_IMPORTED, isDatabaseEmpty, SCHEMA_VERSION, TABLES } from './schema';
 
 type Row = Record<string, SqlValue>;
 type Tables = Record<typeof TABLES[number], Row[]>;
@@ -92,7 +92,7 @@ function readTables(value: unknown): Tables {
     return value as Tables;
 }
 
-function restore(db: Database, tables: Tables) {
+function restore(db: Database, tables: Tables, schemaVersion: number) {
     db.transaction(() => {
         if (!isDatabaseEmpty(db)) {
             throw new AppError('Só é possível importar com o app vazio. Nada foi alterado.');
@@ -121,6 +121,10 @@ function restore(db: Database, tables: Tables) {
                 throw new AppError(INVALID);
             }
         }
+
+        if (schemaVersion < 2) {
+            db.exec(CLOSE_IMPORTED);
+        }
     });
 }
 
@@ -146,6 +150,7 @@ export function prepareImport(text: string): PreparedImport {
         throw new AppError('O backup é de uma versão mais nova do app. Atualize o Fit Note.');
     }
 
+    const { schemaVersion } = file;
     const tables = readTables(file.tables);
 
     return {
@@ -154,6 +159,6 @@ export function prepareImport(text: string): PreparedImport {
         sets: tables.set_log.length,
         duplicates: [],
         warnings: [],
-        apply: db => restore(db, tables),
+        apply: db => restore(db, tables, schemaVersion),
     };
 }

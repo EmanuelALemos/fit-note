@@ -11,10 +11,12 @@ interface InputPopupProps {
     initialText?: string | undefined; // Optional prop for editing
     title: string;
     hint?: string;
+    placeholder?: string;
+    isEditing?: boolean;
     keyboardType?: KeyboardTypeOptions;
 }
 
-export function InputPopup({ isOpen, onClose, onSave, initialText, title, hint, keyboardType }: InputPopupProps) {
+export function InputPopup({ isOpen, onClose, onSave, initialText, title, hint, placeholder, isEditing = !!initialText, keyboardType }: InputPopupProps) {
     const [inputText, setInputText] = useState(initialText || '');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -44,7 +46,7 @@ export function InputPopup({ isOpen, onClose, onSave, initialText, title, hint, 
                 <Modal.CloseButton />
                 <Modal.Header bg='#525252'>
                     <Text fontSize="lg" color="white" fontFamily={'Poppins_600SemiBold'} allowFontScaling={false} >
-                        {initialText ? `Editar ${title}` : `Novo ${title}`}
+                        {isEditing ? `Editar ${title}` : `Novo ${title}`}
                     </Text>
                 </Modal.Header>
 
@@ -55,7 +57,7 @@ export function InputPopup({ isOpen, onClose, onSave, initialText, title, hint, 
                         </FormControl.Label>
                         <Input
                             variant="filled"
-                            placeholder={`Digite o ${title}`}
+                            placeholder={placeholder ?? `Digite o ${title}`}
                             value={inputText}
                             keyboardType={keyboardType}
                             onChangeText={(text) => setInputText(text)}
@@ -89,7 +91,7 @@ export function InputPopup({ isOpen, onClose, onSave, initialText, title, hint, 
                         <Button onPress={handleSave} isDisabled={isSaving} bg="#525252" flex={1}>
                             <View flexDirection='row' alignItems={'center'}>
                                 <Text fontFamily={'Poppins_600SemiBold'} color='white' mr={2}  allowFontScaling={false}>
-                                    {initialText ? 'Salvar Alterações' : `Criar ${title}`}
+                                    {isEditing ? 'Salvar Alterações' : `Criar ${title}`}
                                 </Text>
                                 <AntDesign name='checksquare' color='#D9F99D' size={20} />
                             </View>

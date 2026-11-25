@@ -27,7 +27,8 @@ test('lista vira backup e migra com ordem, cargas e séries', () => {
     expect(repository.listTrainings().map(training => [
         training.name,
         repository.listExercises(training.id).map(item => {
-            const { name, loadKg, repetitions } = repository.getExercise(item.id);
+            const { name, loadKg, last } = repository.workouts.getExercise(item.id);
+            const repetitions = last?.sets.map(set => set.reps) ?? [];
             return [name, loadKg, repetitions];
         }),
     ])).toEqual([

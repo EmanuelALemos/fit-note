@@ -3,12 +3,14 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 export type RootStackParamList = {
     training: undefined;
     exercise: { trainingId: number; trainingName: string };
-    series: { exerciseId: number; exerciseName: string };
+    series: { trainingId: number; exerciseId: number; exerciseName: string };
+    summary: { sessionId: number };
 };
 
 export type TrainingScreenProps = NativeStackScreenProps<RootStackParamList, 'training'>;
 export type ExerciseScreenProps = NativeStackScreenProps<RootStackParamList, 'exercise'>;
 export type SeriesScreenProps = NativeStackScreenProps<RootStackParamList, 'series'>;
+export type SummaryScreenProps = NativeStackScreenProps<RootStackParamList, 'summary'>;
 
 declare global {
     namespace ReactNavigation {
