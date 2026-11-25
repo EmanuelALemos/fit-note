@@ -6,8 +6,9 @@
   "build": {
     "preview": {
       "android": {
-        "distribution": "internal"
-      }   
+        "distribution": "internal",
+        "autoIncrement": true
+      }
     }
   }
 }

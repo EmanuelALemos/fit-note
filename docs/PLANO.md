@@ -10,7 +10,7 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 |---|---|---|
 | 1 | Correções sem mudar o modelo | Concluída e testada no Expo Go |
 | 2 | SQLite, repositório, migração, importação e exportação | Concluída e testada no Expo Go |
-| 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Próxima |
+| 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Primeiro build instalado e em uso; verificações do keystore pendentes (seção 9) |
 | 3 | Renomear e reordenar | Não iniciada |
 | 4 | Sessões | Não iniciada |
 | 5 | Timer de descanso | Não iniciada |
@@ -264,7 +264,20 @@ Passos do Emanuel (login e chaves não passam pelo Claude nem pelo Git):
 5. Provar o backup: `keytool -list -v -keystore <arquivo>.jks` deve abrir com a senha guardada e mostrar o mesmo SHA-256 que `apksigner verify --print-certs` mostra no APK.
 6. Provar a atualização: gerar um segundo build e instalar por cima, com dados de teste, antes de importar os reais.
 
-No Git: `*.jks` já é ignorado; acrescentar `credentials.json`, `credentials/` e as listas de dados.
+No Git: `*.jks`, `*.keystore`, `credentials.json`, `credentials/`, listas e backups são ignorados. O perfil `preview` usa `autoIncrement`, para cada APK ter versionCode maior que o anterior. O `eas init` altera o `app.json` (`projectId` e `owner`): incluir essa mudança no PR da Etapa 2b.
+
+### Situação da 2b
+
+O primeiro build foi instalado no celular do Emanuel e os treinos importados; **o app novo já tem dados reais e não deve mais ser limpo nem desinstalado**. Emanuel optou por adiar as verificações abaixo e seguir para a Etapa 3.
+
+Feito: keystore baixado do EAS; o SHA-256 do arquivo é igual ao mostrado pelo EAS.
+
+Pendente, antes de instalar o segundo build:
+
+- [ ] Copiar `credentials.json` e `keystore.jks` para dois lugares fora do computador (até lá, não apagar os da pasta do projeto).
+- [ ] Comparar o SHA-256 com o do APK instalado e testar a senha guardada.
+- [ ] Exportar um backup do app novo e guardar fora do celular.
+- [ ] Instalar o segundo build por cima. Erro de assinatura: não desinstalar.
 
 ### Rodar no Expo Go até o primeiro build
 

@@ -37,3 +37,8 @@ yarn-error.*
 # backups com dados reais
 fitnote-backup-*.json
 fitnote-lista-*.txt
+
+# credenciais de assinatura
+credentials.json
+credentials/
+*.keystore

@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "FitNote",
-    "slug": "FitNote",
-    "version": "1.1.1",
+    "name": "Fit Note",
+    "slug": "fit-note",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -19,7 +19,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#404040"
       },
-      "package": "com.emanuel_alemos.FitNote"
+      "package": "com.emanuellemos.fitnote"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,8 +29,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "712c9cdf-ec60-4e5e-b8d4-cdae3bd78bee"
+        "projectId": "0f25bfd2-f616-4fc4-a297-5dec50a403b0"
       }
-    }
+    },
+    "owner": "emanuel_araujo20"
   }
 }
