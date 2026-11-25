@@ -86,8 +86,8 @@ Itens 13 a 17 aprovados e incluídos na Etapa 1.
 ## 5. Riscos
 
 1. **O Expo Go não enxerga os dados reais.** O uso diário é no APK, que tem armazenamento separado.
-2. **O APK antigo não pode ser atualizado.** O acesso à conta Expo `emanuel_alemos` foi perdido e, com ela, a chave de assinatura. Verificado neste computador: não há sessão do EAS nem cópia do keystore. A versão nova será um app separado, instalado ao lado do antigo.
-3. **Os dados reais só saem do app antigo por transcrição** (prints ou lista). Não haverá APK de backup do `f2900e8`. A transcrição pode ter erros, por isso há conferência (seção 10). Exercícios fora de todos os treinos não aparecem em tela nenhuma e não podem ser recuperados.
+2. **O APK antigo não pode ser atualizado.** O acesso à conta Expo `emanuel_alemos` foi perdido e, com ela, a chave de assinatura. Verificado neste computador: não há sessão do EAS, e uma busca na pasta do usuário (sem AppData, até 5 níveis) não achou o keystore. A versão nova será um app separado, instalado ao lado do antigo.
+3. **Os dados reais só saem do app antigo por transcrição** (prints ou lista). Não haverá APK de backup do `f2900e8`. A transcrição pode ter erros, por isso há conferência (seção 10). Exercícios fora de todos os treinos não aparecem em tela nenhuma, mas voltam com carga e séries ao adicionar o nome exato a um treino no app antigo.
 4. **Os dados são o estado atual, não 1 ano de histórico.** Como as cargas são sobrescritas (bug 5), a migração recupera só a última marca de cada exercício. Os gráficos começam a se formar na Etapa 4.
 5. **Expo Go e SDK 51:** a versão da loja costuma suportar só SDKs recentes. O celular precisa do Expo Go compatível com o SDK 51 ou de um build próprio. Notificações da Etapa 5 devem ser validadas em build próprio, com permissão de notificação (Android 13+) e de alarme exato (Android 12+).
 6. **Os dois apps não se comunicam.** Depois da importação, o que for registrado no antigo não chega ao novo. Trocar de vez, num dia definido.
