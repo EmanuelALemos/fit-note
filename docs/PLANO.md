@@ -114,7 +114,7 @@ Acesso centralizado em `src/database/`. Telas não usam SQL nem AsyncStorage. Es
 | Índice único parcial: no máximo uma sessão `workout` aberta | Garante a regra da sessão única |
 | `PRAGMA user_version`, `foreign_keys = ON`, WAL | Versões do esquema e integridade |
 
-**Nome normalizado [proposta]:** remover espaços das pontas, juntar espaços internos, minúsculas e sem acentos. O nome exibido mantém a forma original.
+**Nome normalizado:** usado só para detectar duplicatas: sem espaços nas pontas, espaços internos unidos, minúsculas e sem acentos. O nome exibido fica exatamente como foi digitado.
 
 **Entre as Etapas 2 e 4:** as telas atuais leem e editam a sessão `imported` do exercício (criada sob demanda para exercícios novos), mantendo o comportamento. A partir da Etapa 4 ela vira somente leitura.
 
@@ -210,8 +210,8 @@ Perguntar antes de implementar a parte afetada.
 | 4 | Carga única por exercício, com edição opcional por série? | 4 | |
 | 5 | Incluir na Etapa 1 a exportação de segurança? | 1 | **Sim**, no primeiro commit |
 | 6 | Incluir na Etapa 1 os itens 13 a 17? (O 13 é necessário para o 9) | 1 | **Sim** |
-| 7 | Normalização ignora acentos ("maquina" = "máquina")? | 2 | |
-| 8 | Duplicatas com marcas diferentes: qual vale? Os dados antigos não têm data. Sugestão: manter a de maior carga e guardar a outra como sessão importada anterior | 2 | |
+| 7 | Normalização ignora acentos ("maquina" = "máquina")? | 2 | **Sim**, só para detectar duplicatas; o nome exibido não muda |
+| 8 | Duplicatas com marcas diferentes: qual vale? Os dados antigos não têm data | 2 | O teste com o backup real **lista as duplicatas e o Emanuel decide caso a caso**. Se forem muitas, vale a regra: maior carga fica como atual e a outra vira sessão importada anterior |
 | 9 | Aprovar os ajustes sugeridos no esquema (seção 6)? | 2 | **Sim** |
 
 ## 9. Antes da Etapa 2
@@ -221,12 +221,13 @@ Perguntar antes de implementar a parte afetada.
 1. Chave guardada no EAS: `npx eas-cli credentials -p android`, perfil `preview`. Anotar o **SHA-256** do keystore. Só consultar: nunca escolher opções de criar, trocar ou apagar keystore.
 2. Assinatura do APK em uso: pegar o arquivo do APK (página do build no EAS ou `adb shell pm path com.emanuel_alemos.FitNote` e `adb pull <caminho>`) e rodar `apksigner verify --print-certs <arquivo>.apk` (Android SDK build-tools).
 3. Os dois SHA-256 precisam ser iguais. Se forem diferentes, parar: o APK novo não instala por cima. **Não desinstalar o antigo.**
+4. Comparar o versionCode remoto (`npx eas-cli build:version:get -p android`) com o instalado (`adb shell dumpsys package com.emanuel_alemos.FitNote | grep versionCode`). O do APK novo não pode ser menor que o instalado, senão o Android recusa a atualização.
 
 ### Testar a migração com o JSON exportado, sem tocar no APK
 
 Formato: `{ app, version, exportedAt, asyncStorage: { "<chave>": "<texto bruto>" } }`. Nome `fitnote-backup-*.json`, ignorado pelo Git. Entregar na Etapa 2:
 
-1. **No computador:** teste que recebe o caminho do arquivo por `FITNOTE_BACKUP`, executa a migração num SQLite de Node, confere contagens, cargas, repetições e ordem, e imprime um relatório. Sem a variável, o teste é pulado.
+1. **No computador:** teste que recebe o caminho do arquivo por `FITNOTE_BACKUP`, executa a migração num SQLite de Node, confere contagens, cargas, repetições e ordem, e imprime um relatório com **todas as duplicatas encontradas** (nomes originais, carga, séries e treinos de cada uma). Sem a variável, o teste é pulado.
 2. **No Expo Go (ou build de desenvolvimento com outro pacote):** ação "importar backup de teste", só em `__DEV__`, que carrega o JSON no AsyncStorage daquele app antes da migração. Recusa se já houver dados.
 
 Mockups: https://claude.ai/artifact/C4TgGYGhYBc8rowCmznTez (as descrições deste plano bastam; se algo ficar ambíguo, perguntar).
