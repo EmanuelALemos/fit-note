@@ -5,6 +5,7 @@ import { useFonts, Poppins_600SemiBold } from '@expo-google-fonts/poppins'
 import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { NativeBaseProvider } from 'native-base';
 
+import { DatabaseProvider } from '@database/DatabaseProvider';
 import { Loading } from '@components/Loading';
 import { Routes } from '@routes/index';
 
@@ -14,7 +15,7 @@ export default function App() {
   return (
       <NativeBaseProvider initialWindowMetrics={initialWindowMetrics}>
         <StatusBar barStyle="light-content" backgroundColor='transparent' translucent />
-        {fonstLoaded ? <Routes /> : <Loading />}
+        {fonstLoaded ? <DatabaseProvider><Routes /></DatabaseProvider> : <Loading />}
       </NativeBaseProvider>
   );
 }

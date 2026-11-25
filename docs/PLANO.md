@@ -8,8 +8,8 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 
 | Etapa | Conteúdo | Estado |
 |---|---|---|
-| 1 | Correções sem mudar o modelo | Implementada; aguardando teste no celular |
-| 2 | SQLite, repositório, migração, importação e exportação | Não iniciada |
+| 1 | Correções sem mudar o modelo | Concluída e testada no Expo Go |
+| 2 | SQLite, repositório, migração, importação e exportação | Implementada; aguardando teste no celular |
 | 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Aprovada; após a Etapa 2 |
 | 3 | Renomear e reordenar | Não iniciada |
 | 4 | Sessões | Não iniciada |
@@ -120,6 +120,10 @@ Acesso centralizado em `src/database/`. Telas não usam SQL nem AsyncStorage. Es
 
 **Nome normalizado:** usado só para detectar duplicatas: sem espaços nas pontas, espaços internos unidos, minúsculas e sem acentos. O nome exibido fica exatamente como foi digitado.
 
+**Implementação:** API síncrona do `expo-sqlite`, que substitui a fila da Etapa 1; nos testes, o mesmo SQL roda no `better-sqlite3`. Tabelas `STRICT`. A tabela `meta` guarda a flag de migração. Ao adicionar um exercício, o nome normalizado reaproveita o já existente (bug 3).
+
+**Sessão importada:** a que está com `finished_at` NULL é o estado atual do exercício. Duplicatas unidas geram sessões importadas já finalizadas, anteriores a ela. Entre duplicatas, marca com séries vence marca sem séries. Na Etapa 4, finalizar as abertas.
+
 **Entre as Etapas 2 e 4:** as telas atuais leem e editam a sessão `imported` do exercício (criada sob demanda para exercícios novos), mantendo o comportamento. A partir da Etapa 4 ela vira somente leitura.
 
 ### Migração (crítica)
@@ -150,7 +154,7 @@ Casos a testar:
 - arquivo importado e AsyncStorage com os mesmos dados geram o mesmo banco
 - importação recusada com SQLite não vazio
 
-**Testes [proposta]:** `jest-expo`, com o repositório sobre uma interface pequena para rodar o mesmo SQL em um SQLite de Node.
+**Testes:** `jest-expo`, com o repositório sobre uma interface pequena para rodar o mesmo SQL em um SQLite de Node.
 
 ## 7. Etapas
 
@@ -173,6 +177,8 @@ Verificado sem celular: `tsc`, testes automáticos e geração do bundle Android
 Mesmo comportamento visível, mais a importação (seção 10). Aceite: testes da migração verdes, migração validada com o arquivo gerado da lista, conferência com o app antigo e nenhuma tela usando o storage antigo.
 
 O botão de backup lê o AsyncStorage e deixaria de exportar dados atuais quando o SQLite entrar. Nesta etapa ele passa a exportar o SQLite inteiro (formato `version: 2`) e a importação aceita os formatos 1 e 2. Exportar e reimportar em banco vazio deve reproduzir o mesmo banco (teste).
+
+Verificado sem celular: `tsc`, testes automáticos, migração com a lista real e geração do bundle Android. SQLite nativo, seletor de arquivos e compartilhamento dependem do teste no aparelho.
 
 ### Etapa 2b: identidade e primeiro build do app novo
 
@@ -260,6 +266,15 @@ Passos do Emanuel (login e chaves não passam pelo Claude nem pelo Git):
 
 No Git: `*.jks` já é ignorado; acrescentar `credentials.json`, `credentials/` e as listas de dados.
 
+### Rodar no Expo Go até o primeiro build
+
+Expo Go **2.31.2** (SDK 51; a versão da loja não serve; atualização automática desligada). Neste computador o IP precisa ser informado, e `--offline` evita o login na conta antiga:
+
+```powershell
+$env:REACT_NATIVE_PACKAGER_HOSTNAME = "<IPv4 do Wi-Fi>"
+npx expo start --offline
+```
+
 ## 10. Dados do app antigo: da lista ao app novo
 
 ### Formato da lista
@@ -287,6 +302,8 @@ Supino reto
 O `uiautomator dump` lê cada tela; `input tap` só abre treinos e exercícios, `input swipe` rola e a tecla Voltar sai. Nunca tocar em +, −, editar, excluir ou carga. Parar se houver outra janela em foco, modal, alerta, campo de texto ou tela inesperada. Celular parado, com Não perturbe. Duas passagens completas precisam ser idênticas.
 
 **Emanuel: concluída e aprovada.** 4 treinos, 22 exercícios, 65 séries, 27 vínculos; duas passagens idênticas; nenhuma duplicata. O treino "Lower B" foi excluído pelo Emanuel antes da leitura e fica de fora. Lista e leituras ficam em `Documents/FitNote-dados`, fora do Git. O script `npm run lista` deve chegar a esses mesmos totais.
+
+Conferido na Etapa 2: lista, backup gerado, migração no SQLite de Node e leitura bruta do celular têm os mesmos valores.
 
 **Emanoela: pendente**, com o mesmo processo no celular de Emanoela. A decisão 8 pode se aplicar lá.
 

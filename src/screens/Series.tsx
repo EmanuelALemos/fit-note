@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import { View, Text, Image } from "native-base";
 
@@ -12,90 +12,56 @@ import { SerieBodyCard } from "@components/SerieBodyCard";
 import { ExerciseLoadCard } from "@components/ExerciseLoadCard";
 import { Header } from "@components/Header";
 import { InputPopup } from "@components/InputPopup";
-import { Loading } from "@components/Loading";
 
-import { exerciseGetByName } from "@storage/exercise/exerciseGetByName";
-import { exerciseEditLoad } from "@storage/exercise/exerciseEditLoad";
-import { exerciseAddSerie } from "@storage/exercise/exerciseAddSerie";
-import { exerciseRemoveLastSerie } from "@storage/exercise/exerciseRemoveLastSerie";
-import { exerciseChangeRepetitions } from "@storage/exercise/exerciseChangeRepetitions";
+import { useDatabase } from "@database/DatabaseProvider";
 
 import { SeriesScreenProps } from "@routes/routeTypes";
 import { formatLoad, parseLoad } from "@utils/load";
 
 export function Series({ navigation, route }: SeriesScreenProps) {
 
-    const { exerciseName } = route.params;
+    const { exerciseId, exerciseName } = route.params;
 
     const insets = useSafeAreaInsets();
+    const { repository } = useDatabase();
 
-    const [repetitions, setRepetitions] = useState<number[]>([]); // uma posição por série
-    const [load, setLoad] = useState(0);
+    const [exercise, setExercise] = useState(() => repository.getExercise(exerciseId));
     const [modalOpen, setModalOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
 
-    const pendingWrites = useRef(0);
-
-    async function getExercise() {
+    function refresh() {
         try {
-            const exercise = await exerciseGetByName(exerciseName);
-
-            // Há toques mais novos que esta leitura: a última escrita recarrega a tela.
-            if (pendingWrites.current > 0) {
-                return;
-            }
-
-            setRepetitions(exercise?.series?.map(serie => serie.repetitions) ?? []);
-            setLoad(exercise?.load ?? 0);
+            setExercise(repository.getExercise(exerciseId));
         } catch (error) {
             Alert.alert('Erro', 'Não foi possível carregar o exercício');
             console.error(error);
-        } finally {
-            setIsLoading(false);
         }
     }
 
-    // Atualiza a tela na hora e confere com o que foi gravado quando os toques param.
-    async function write(optimisticUpdate: () => void, save: () => Promise<void>, errorMessage: string) {
-        pendingWrites.current++;
-        optimisticUpdate();
-
+    // A gravação é síncrona: quando termina, a tela já pode reler o que ficou salvo.
+    function write(save: () => void, errorMessage: string): boolean {
         try {
-            await save();
+            save();
+            return true;
         } catch (error) {
             Alert.alert('Erro', errorMessage);
             console.log(error);
+            return false;
         } finally {
-            pendingWrites.current--;
-
-            if (pendingWrites.current === 0) {
-                getExercise();
-            }
+            refresh();
         }
     }
 
     function handleAddSerie() {
-        write(
-            () => setRepetitions(current => [...current, 0]),
-            () => exerciseAddSerie(exerciseName),
-            'Não foi possível adicionar a série'
-        );
+        write(() => repository.addSet(exerciseId), 'Não foi possível adicionar a série');
     }
 
     function handleRemoveSerie() {
-        write(
-            () => setRepetitions(current => current.slice(0, -1)),
-            () => exerciseRemoveLastSerie(exerciseName),
-            'Não foi possível remover a série'
-        );
+        write(() => repository.removeLastSet(exerciseId), 'Não foi possível remover a série');
     }
 
-    function handleChangeRepetitions(serieIndex: number, delta: number) {
+    function handleChangeRepetitions(setNumber: number, delta: number) {
         write(
-            () => setRepetitions(current => current.map((value, index) =>
-                index === serieIndex ? Math.max(0, value + delta) : value
-            )),
-            () => exerciseChangeRepetitions(exerciseName, serieIndex, delta),
+            () => repository.changeRepetitions(exerciseId, setNumber, delta),
             'Não foi possível alterar as repetições'
         );
     }
@@ -108,18 +74,13 @@ export function Series({ navigation, route }: SeriesScreenProps) {
             return;
         }
 
-        try {
-            await exerciseEditLoad(exerciseName, newLoad);
-            setLoad(newLoad);
+        if (write(() => repository.setLoad(exerciseId, newLoad), 'Não foi possível salvar a carga')) {
             setModalOpen(false);
-        } catch (error) {
-            Alert.alert('Erro', 'Não foi possível salvar a carga');
-            console.error(error);
         }
     }
 
     useFocusEffect(useCallback(() => {
-        getExercise();
+        refresh();
     }, []));
 
     return (
@@ -131,47 +92,43 @@ export function Series({ navigation, route }: SeriesScreenProps) {
                 onBackPress={() => navigation.goBack()}
             />
 
-            {isLoading ? (
-                <Loading />
-            ) : (
-                <View flex={1} w='100%' px={6} pt={6}>
-                    <SerieHeaderCard
-                        series={repetitions.length}
-                        onAddSerie={handleAddSerie}
-                        onRemoveSerie={handleRemoveSerie}
-                    />
+            <View flex={1} w='100%' px={6} pt={6}>
+                <SerieHeaderCard
+                    series={exercise.repetitions.length}
+                    onAddSerie={handleAddSerie}
+                    onRemoveSerie={handleRemoveSerie}
+                />
 
-                    <FlatList
-                        data={repetitions}
-                        keyExtractor={(_, index) => String(index)}
-                        renderItem={({ item, index }) => (
-                            <SerieBodyCard
-                                serie={`${index + 1}ª série`}
-                                onAddRepetition={() => handleChangeRepetitions(index, 1)}
-                                onRemoveRepetition={() => handleChangeRepetitions(index, -1)}
-                                repetitions={item}
-                            />
-                        )}
-                        ListEmptyComponent={
-                            <Text mt={10} textAlign='center' color='white' fontSize={24} fontFamily={'Poppins_600SemiBold'} allowFontScaling={false}>
-                                Nenhuma série cadastrada
-                            </Text>
-                        }
-                        showsVerticalScrollIndicator={false}
-                        style={{ flex: 1 }}
-                    />
+                <FlatList
+                    data={exercise.repetitions}
+                    keyExtractor={(_, index) => String(index)}
+                    renderItem={({ item, index }) => (
+                        <SerieBodyCard
+                            serie={`${index + 1}ª série`}
+                            onAddRepetition={() => handleChangeRepetitions(index + 1, 1)}
+                            onRemoveRepetition={() => handleChangeRepetitions(index + 1, -1)}
+                            repetitions={item}
+                        />
+                    )}
+                    ListEmptyComponent={
+                        <Text mt={10} textAlign='center' color='white' fontSize={24} fontFamily={'Poppins_600SemiBold'} allowFontScaling={false}>
+                            Nenhuma série cadastrada
+                        </Text>
+                    }
+                    showsVerticalScrollIndicator={false}
+                    style={{ flex: 1 }}
+                />
 
-                    <View pt={4} style={{ paddingBottom: insets.bottom + 24 }}>
-                        <ExerciseLoadCard load={load} onPressEdit={() => setModalOpen(true)} />
-                    </View>
+                <View pt={4} style={{ paddingBottom: insets.bottom + 24 }}>
+                    <ExerciseLoadCard load={exercise.loadKg} onPressEdit={() => setModalOpen(true)} />
                 </View>
-            )}
+            </View>
 
             <InputPopup
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
                 onSave={handleSave}
-                initialText={formatLoad(load)}
+                initialText={formatLoad(exercise.loadKg)}
                 title='Carga'
                 keyboardType='decimal-pad'
             />

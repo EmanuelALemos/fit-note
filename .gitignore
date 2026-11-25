@@ -36,3 +36,4 @@ yarn-error.*
 
 # backups com dados reais
 fitnote-backup-*.json
+fitnote-lista-*.txt

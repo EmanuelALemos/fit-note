@@ -1,124 +1,99 @@
 import { useCallback, useState } from 'react';
 import { View, Image } from 'native-base';
 import { Alert, FlatList } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BackgroundImage from '@assets/padrões.png';
 
-import { ButtonAdd } from '@components/ButtonAdd';
 import { BackupButton } from '@components/BackupButton';
-import { Header } from '@components/Header';
+import { ButtonAdd } from '@components/ButtonAdd';
 import { Card } from '@components/Card';
-
+import { Header } from '@components/Header';
+import { ImportButton } from '@components/ImportButton';
 import { InputPopup } from '@components/InputPopup';
 
-import { trainingsGetAll } from '@storage/training/trainingsGetAll';
-import { useFocusEffect } from '@react-navigation/native';
-import { Loading } from '@components/Loading';
-import { trainingCreate } from '@storage/training/trainingCreate';
-import { trainingRemoveByName } from '@storage/training/trainingRemoveByName';
-import { trainingEdit } from '@storage/training/trainingEdit';
-import { TrainingStorageDTO } from '@storage/training/TrainingStorageDTO';
+import { useDatabase } from '@database/DatabaseProvider';
+import { Training as TrainingItem } from '@database/repository';
+
 import { TrainingScreenProps } from '@routes/routeTypes';
 import { AppError } from '@utils/AppError';
 
 export function Training({ navigation }: TrainingScreenProps) {
     const insets = useSafeAreaInsets();
+    const { repository } = useDatabase();
 
-    const [trainings, setTrainings] = useState<TrainingStorageDTO[]>([]);
+    const [trainings, setTrainings] = useState(() => repository.listTrainings());
+    const [canImport, setCanImport] = useState(() => repository.isEmpty());
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingTraining, setEditingTraining] = useState<TrainingStorageDTO | undefined>(undefined);
-    const [isLoading, setIsLoading] = useState(true);
+    const [editingTraining, setEditingTraining] = useState<TrainingItem | undefined>(undefined);
 
-
-    function handleNavigateToExercise(trainingName: string) {
-        navigation.navigate('exercise', { trainingName });
+    function refresh() {
+        try {
+            setTrainings(repository.listTrainings());
+            setCanImport(repository.isEmpty());
+        } catch (error) {
+            console.log(error);
+            Alert.alert('Erro', 'Não foi possível carregar os treinos.');
+        }
     }
 
-    const handleAddNewTraining = () => {
+    function handleAddNewTraining() {
         setEditingTraining(undefined);
         setModalOpen(true);
-    };
+    }
 
-    const handleEditTraining = (training: TrainingStorageDTO) => {
-        setEditingTraining(training); // Configura o treino em edição
-        setModalOpen(true); // Abre o modal
-    };
+    function handleEditTraining(training: TrainingItem) {
+        setEditingTraining(training);
+        setModalOpen(true);
+    }
 
-    // Função chamada ao salvar (editar ou criar)
-    const handleSave = async (inputText: string) => {
-
+    async function handleSave(inputText: string) {
         try {
+            const name = inputText.trim();
 
-            const name = inputText.trimEnd();
-
-            if (name.trim().length === 0) {
+            if (name.length === 0) {
                 return Alert.alert('Novo Treino', 'Informe o nome do treino.');
             }
 
             if (editingTraining) {
-                // Edição de treino existente
-                await trainingEdit(editingTraining.name, name); // Atualiza apenas o nome
+                repository.renameTraining(editingTraining.id, name);
             } else {
-                // Criação de novo treino
-                const newTraining: TrainingStorageDTO = {
-                    name: name, // Nome fornecido pelo usuário
-                    exercicies: [], // Inicialmente sem exercícios
-                };
-
-                await trainingCreate(newTraining); // Chama a função de criação
+                repository.createTraining(name);
             }
 
-            fetchTrainings(); // Atualiza a lista de treinos
-            setModalOpen(false); // Fecha o modal
-            setEditingTraining(undefined); // Reseta o estado de edição
+            refresh();
+            setModalOpen(false);
+            setEditingTraining(undefined);
         } catch (error) {
             console.log(error);
-
-            if (error instanceof AppError) {
-                Alert.alert('Erro', error.message);
-            } else {
-                Alert.alert('Erro', 'Ocorreu um erro desconhecido');
-            }
+            Alert.alert('Erro', error instanceof AppError ? error.message : 'Ocorreu um erro desconhecido');
         }
-    };
+    }
 
-    const trainingRemove = async (name: string) => {
+    function trainingRemove(id: number) {
         try {
-            await trainingRemoveByName(name);
-            fetchTrainings();
+            repository.removeTraining(id);
+            refresh();
         } catch (error) {
             console.log(error);
-            Alert.alert('Erro', 'Não foi possível excluir o treino.')
+            Alert.alert('Erro', 'Não foi possível excluir o treino.');
         }
-    };
+    }
 
-    async function handleTrainingRemove(name: string) {
+    function handleTrainingRemove(id: number) {
         Alert.alert(
             'Remover',
             'Deseja excluir o treino ?',
             [
                 { text: 'Não', style: 'cancel' },
-                { text: 'Sim', onPress: () => trainingRemove(name) }
+                { text: 'Sim', onPress: () => trainingRemove(id) }
             ]
         );
     }
 
-
-    async function fetchTrainings() {
-        try {
-            const data = await trainingsGetAll();
-            setTrainings(data);
-        } catch (error) {
-            console.log(error);
-            Alert.alert('Erro', 'Não foi possível carregar os treinos.');
-        } finally {
-            setIsLoading(false);
-        }
-    }
-
     useFocusEffect(useCallback(() => {
-        fetchTrainings();
+        refresh();
     }, []));
 
     return (
@@ -134,31 +109,33 @@ export function Training({ navigation }: TrainingScreenProps) {
                 resizeMode='cover'
             />
 
-            {isLoading ?
-                <Loading />
-                : trainings.length !== 0 ?
-                    <>
-                        <Header title='TREINOS' onAddPress={handleAddNewTraining} />
-                        <FlatList
-                            data={trainings}
-                            keyExtractor={item => item.name}
-                            renderItem={({ item }) => (
-                                <Card
-                                    name={item.name}
-                                    onPressTrash={() => handleTrainingRemove(item.name)}
-                                    onPressEdit={() => handleEditTraining(item)}
-                                    onPressNavigate={() => handleNavigateToExercise(item.name)}
-                                />
-                            )}
-                            showsVerticalScrollIndicator={false}
-                            style={{ flex: 1, width: '100%' }}
-                            contentContainerStyle={{ paddingTop: 24, paddingBottom: insets.bottom + 24, paddingHorizontal: 24 }}
-                        />
-                    </>
-                    :
-                    <View flex={1} justifyContent={'center'}>
-                        <ButtonAdd onPress={handleAddNewTraining} title='ADICIONE SEU TREINO' />
-                    </View>
+            {trainings.length !== 0 ?
+                <>
+                    <Header title='TREINOS' onAddPress={handleAddNewTraining} />
+                    <FlatList
+                        data={trainings}
+                        keyExtractor={item => String(item.id)}
+                        renderItem={({ item }) => (
+                            <Card
+                                name={item.name}
+                                onPressTrash={() => handleTrainingRemove(item.id)}
+                                onPressEdit={() => handleEditTraining(item)}
+                                onPressNavigate={() => navigation.navigate('exercise', {
+                                    trainingId: item.id,
+                                    trainingName: item.name,
+                                })}
+                            />
+                        )}
+                        showsVerticalScrollIndicator={false}
+                        style={{ flex: 1, width: '100%' }}
+                        contentContainerStyle={{ paddingTop: 24, paddingBottom: insets.bottom + 24, paddingHorizontal: 24 }}
+                    />
+                </>
+                :
+                <View flex={1} justifyContent={'center'}>
+                    <ButtonAdd onPress={handleAddNewTraining} title='ADICIONE SEU TREINO' />
+                    {canImport && <ImportButton onImported={refresh} />}
+                </View>
             }
 
             <BackupButton />
@@ -172,4 +149,4 @@ export function Training({ navigation }: TrainingScreenProps) {
             />
         </View>
     )
-} 
+}
