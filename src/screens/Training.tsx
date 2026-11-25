@@ -1,28 +1,29 @@
-import { useCallback, useEffect, useState } from 'react';
-import { View, Image, Text } from 'native-base';
-import { Alert, FlatList, TouchableOpacity } from 'react-native';
-import { moderateScale } from 'react-native-size-matters';
+import { useCallback, useState } from 'react';
+import { View, Image } from 'native-base';
+import { Alert, FlatList } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BackgroundImage from '@assets/padrões.png';
-import Add from '@assets/MAIS.png';
 
 import { ButtonAdd } from '@components/ButtonAdd';
 import { BackupButton } from '@components/BackupButton';
+import { Header } from '@components/Header';
 import { Card } from '@components/Card';
 
 import { InputPopup } from '@components/InputPopup';
 
 import { trainingsGetAll } from '@storage/training/trainingsGetAll';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Loading } from '@components/Loading';
 import { trainingCreate } from '@storage/training/trainingCreate';
 import { trainingRemoveByName } from '@storage/training/trainingRemoveByName';
 import { trainingEdit } from '@storage/training/trainingEdit';
 import { TrainingStorageDTO } from '@storage/training/TrainingStorageDTO';
+import { TrainingScreenProps } from '@routes/routeTypes';
 import { AppError } from '@utils/AppError';
 
-export function Training() {
-    const navigation = useNavigation<ExerciseScreenNavigationProp>();
+export function Training({ navigation }: TrainingScreenProps) {
+    const insets = useSafeAreaInsets();
 
     const [trainings, setTrainings] = useState<TrainingStorageDTO[]>([]);
     const [modalOpen, setModalOpen] = useState(false);
@@ -57,12 +58,7 @@ export function Training() {
 
             if (editingTraining) {
                 // Edição de treino existente
-                const updatedTraining: TrainingStorageDTO = {
-                    ...editingTraining,
-                    name: name, // Atualiza apenas o nome, mantendo os exercícios
-                };
-
-                await trainingEdit(editingTraining, updatedTraining); // Chama a função de edição
+                await trainingEdit(editingTraining.name, name); // Atualiza apenas o nome
             } else {
                 // Criação de novo treino
                 const newTraining: TrainingStorageDTO = {
@@ -111,10 +107,8 @@ export function Training() {
 
     async function fetchTrainings() {
         try {
-            setIsLoading(true);
             const data = await trainingsGetAll();
-            const validTrainings = data.filter(training => training !== null && training !== undefined);
-            setTrainings(validTrainings);
+            setTrainings(data);
         } catch (error) {
             console.log(error);
             Alert.alert('Erro', 'Não foi possível carregar os treinos.');
@@ -140,45 +134,31 @@ export function Training() {
                 resizeMode='cover'
             />
 
-            {trainings.length !== 0 ?
-                <View mt={100} alignItems='center'>
-                    <Text
-                        color='white'
-                        fontSize={32}
-                        fontFamily={'Poppins_600SemiBold'}
-                        textAlign="center"
-                        allowFontScaling={false}
-                    >
-                        TREINOS
-                    </Text>
-                    <TouchableOpacity onPress={handleAddNewTraining}>
-                        <Image source={Add} alt='add' style={{ width: 52, height: 52 }} />
-                    </TouchableOpacity>
-
-                    {
-                        isLoading ?
-                            <Loading />
-                            :
-                            <FlatList
-                                data={trainings}
-                                keyExtractor={item => item.name}
-                                renderItem={(item) => (
-                                    <Card
-                                        name={item.item.name}
-                                        onPressTrash={() => handleTrainingRemove(item.item.name)}
-                                        onPressEdit={() => handleEditTraining(item.item)}
-                                        onPressNavigate={() => handleNavigateToExercise(item.item.name)}
-                                    />
-                                )}
-                                showsVerticalScrollIndicator={false}
-                                contentContainerStyle={{ alignItems: 'center', paddingVertical: 50, paddingHorizontal: 24 }}
-                            />
-                    }
-                </View>
-                :
-                <View flex={1} justifyContent={'center'}>
-                    <ButtonAdd onPress={handleAddNewTraining} title='ADICIONE SEU TREINO' />
-                </View>
+            {isLoading ?
+                <Loading />
+                : trainings.length !== 0 ?
+                    <>
+                        <Header title='TREINOS' onAddPress={handleAddNewTraining} />
+                        <FlatList
+                            data={trainings}
+                            keyExtractor={item => item.name}
+                            renderItem={({ item }) => (
+                                <Card
+                                    name={item.name}
+                                    onPressTrash={() => handleTrainingRemove(item.name)}
+                                    onPressEdit={() => handleEditTraining(item)}
+                                    onPressNavigate={() => handleNavigateToExercise(item.name)}
+                                />
+                            )}
+                            showsVerticalScrollIndicator={false}
+                            style={{ flex: 1, width: '100%' }}
+                            contentContainerStyle={{ paddingTop: 24, paddingBottom: insets.bottom + 24, paddingHorizontal: 24 }}
+                        />
+                    </>
+                    :
+                    <View flex={1} justifyContent={'center'}>
+                        <ButtonAdd onPress={handleAddNewTraining} title='ADICIONE SEU TREINO' />
+                    </View>
             }
 
             <BackupButton />

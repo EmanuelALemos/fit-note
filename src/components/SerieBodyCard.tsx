@@ -59,7 +59,7 @@ export function SerieBodyCard({
           <AntDesign
             name="minussquare"
             size={32}
-            color="#404040"
+            color={repetitions <= 0 ? "#404040" : "#D9F99D"}
           />
         </TouchableOpacity>
 

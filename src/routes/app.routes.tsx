@@ -2,11 +2,13 @@ import * as React from "react";
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { RootStackParamList } from './routeTypes';
+
 import { Training } from "@screens/Training";
 import { Exercise } from "@screens/Exercise";
 import { Series } from "@screens/Series";
 
-const { Navigator, Screen } = createNativeStackNavigator();
+const { Navigator, Screen } = createNativeStackNavigator<RootStackParamList>();
 
 export function AppRoutes() {
     return (

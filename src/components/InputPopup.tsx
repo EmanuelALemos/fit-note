@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { KeyboardTypeOptions } from 'react-native';
 import { Modal, Button, Input, View, Text, FormControl } from 'native-base';
 
 import { AntDesign } from '@expo/vector-icons';
@@ -6,13 +7,15 @@ import { AntDesign } from '@expo/vector-icons';
 interface InputPopupProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (inputText: string) => void;
+    onSave: (inputText: string) => Promise<void>; // Quem chama fecha o modal quando der certo
     initialText?: string | undefined; // Optional prop for editing
     title: string;
+    keyboardType?: KeyboardTypeOptions;
 }
 
-export function InputPopup({ isOpen, onClose, onSave, initialText, title }: InputPopupProps) {
+export function InputPopup({ isOpen, onClose, onSave, initialText, title, keyboardType }: InputPopupProps) {
     const [inputText, setInputText] = useState(initialText || '');
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -20,10 +23,17 @@ export function InputPopup({ isOpen, onClose, onSave, initialText, title }: Inpu
         }
     }, [initialText, isOpen]);
 
-    const handleSave = () => {
-        onSave(inputText);
-        setInputText(''); // Reset input field after saving
-        onClose(); // Close the modal
+    const handleSave = async () => {
+        if (isSaving) {
+            return;
+        }
+
+        try {
+            setIsSaving(true);
+            await onSave(inputText);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -46,6 +56,7 @@ export function InputPopup({ isOpen, onClose, onSave, initialText, title }: Inpu
                             variant="filled"
                             placeholder={`Digite o ${title}`}
                             value={inputText}
+                            keyboardType={keyboardType}
                             onChangeText={(text) => setInputText(text)}
                             bg="#404040"
                             color="white"
@@ -71,7 +82,7 @@ export function InputPopup({ isOpen, onClose, onSave, initialText, title }: Inpu
                                 <AntDesign name='closesquare' color='#D9F99D' size={20} />
                             </View>
                         </Button>
-                        <Button onPress={handleSave} bg="#525252" flex={1}>
+                        <Button onPress={handleSave} isDisabled={isSaving} bg="#525252" flex={1}>
                             <View flexDirection='row' alignItems={'center'}>
                                 <Text fontFamily={'Poppins_600SemiBold'} color='white' mr={2}  allowFontScaling={false}>
                                     {initialText ? 'Salvar Alterações' : `Criar ${title}`}

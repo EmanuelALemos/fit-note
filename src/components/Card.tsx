@@ -22,7 +22,8 @@ export function Card({ name, onPressTrash, onPressEdit, onPressNavigate, canEdit
                     fontSize={20}
                     numberOfLines={1}
                     ellipsizeMode="tail"
-                    style={{ maxWidth: 280 }}
+                    flex={1}
+                    mr={4}
                     fontFamily={'Poppins_600SemiBold'}
                 >
                     {name}

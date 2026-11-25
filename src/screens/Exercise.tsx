@@ -1,20 +1,18 @@
 import React, { useCallback, useState } from 'react';
 
-import { View, Text, Image } from 'native-base';
+import { View, Image } from 'native-base';
 
 import BackgroundImage from '@assets/padrões.png';
-import Add from '@assets/MAIS.png';
 
-import { useFocusEffect, useRoute, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ButtonAdd } from '@components/ButtonAdd';
-import { Alert, FlatList, TouchableOpacity } from 'react-native';
+import { Alert, FlatList } from 'react-native';
 
 import { InputPopup } from '@components/InputPopup';
 import { Loading } from '@components/Loading';
 import { Card } from '@components/Card';
 import { Header } from '@components/Header';
-
-import { AntDesign } from '@expo/vector-icons';
 
 import { ExerciseStorageDTO } from '@storage/exercise/ExerciseStorageDTO';
 import { exerciseCreate } from '@storage/exercise/exerciseCreate';
@@ -23,24 +21,18 @@ import { exerciseGetByName } from '@storage/exercise/exerciseGetByName';
 import { trainingAddExercise } from '@storage/training/trainingAddExercise';
 import { trainingRemoveExercise } from '@storage/training/trainingRemoveExercise';
 import { exerciseGetAll } from '@storage/exercise/exerciseGetAll';
+import { ExerciseScreenProps } from '@routes/routeTypes';
 import { AppError } from '@utils/AppError';
 
-interface RouteParams {
-    trainingName: string;
-}
+export function Exercise({ navigation, route }: ExerciseScreenProps) {
 
-
-export function Exercise() {
-
-    const route = useRoute();
-
-    const navigation = useNavigation<SeriesScreenNavigationProp>();
+    const insets = useSafeAreaInsets();
 
     const [exercises, setExercises] = useState<ExerciseStorageDTO[]>([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    const { trainingName } = route.params as RouteParams;
+    const { trainingName } = route.params;
 
     const handleAddNewExercise = () => {
         setModalOpen(true);
@@ -113,8 +105,6 @@ export function Exercise() {
 
     async function fetchExercises() {
         try {
-            setIsLoading(true);
-
             // Obtém o treino pelo nome
             const data = await trainingGetByName(trainingName);
 
@@ -133,7 +123,7 @@ export function Exercise() {
             }
         } catch (error) {
             console.log(error);
-            Alert.alert('Erro', 'Não foi possível carregar os treinos.');
+            Alert.alert('Erro', 'Não foi possível carregar os exercícios.');
         } finally {
             setIsLoading(false);
         }
@@ -153,45 +143,39 @@ export function Exercise() {
         <View bg='#404040' flex={1} alignItems='center'>
             <Image source={BackgroundImage} alt='Background' position='absolute' top={0} left={0} right={0} bottom={0} />
 
-            {exercises.length !== 0 ?
-                <>
-                    <Header
-                        title='EXERCÍCIOS'
-                        subtitle={trainingName}
-                        onBackPress={() => navigation.goBack()}
-                        onAddPress={handleAddNewExercise}
-                    />
-                    <View mt={'48'} flex={1}>
-                        {
-                            isLoading ?
-                                <Loading />
-                                :
-                                <FlatList
-                                    data={exercises}
-                                    keyExtractor={item => item.name}
-                                    renderItem={(item) => (
-                                        <Card
-                                            name={item.item.name}
-                                            onPressTrash={() => handleExerciseRemove(item.item.name)}
-                                            canEdit={false}
-                                            onPressNavigate={() => handleNavigateSerie(item.item.name)}
-                                        />
-                                    )}
-                                    showsVerticalScrollIndicator={false}
-                                    contentContainerStyle={{ alignItems: 'center', paddingBottom: 50, paddingHorizontal: 24 }}
+            {isLoading ?
+                <Loading />
+                : exercises.length !== 0 ?
+                    <>
+                        <Header
+                            title='EXERCÍCIOS'
+                            subtitle={trainingName}
+                            onBackPress={() => navigation.goBack()}
+                            onAddPress={handleAddNewExercise}
+                        />
+                        <FlatList
+                            data={exercises}
+                            keyExtractor={item => item.name}
+                            renderItem={({ item }) => (
+                                <Card
+                                    name={item.name}
+                                    onPressTrash={() => handleExerciseRemove(item.name)}
+                                    canEdit={false}
+                                    onPressNavigate={() => handleNavigateSerie(item.name)}
                                 />
-                        }
-                    </View>
-                </>
-                :
-                <>
-                    <Header
-                        onBackPress={() => navigation.goBack()}
-                    />
-                    <View flex={1} justifyContent={'center'}>
-                        <ButtonAdd onPress={handleAddNewExercise} title='ADICIONE SEU EXERCÍCIO' />
-                    </View>
-                </>
+                            )}
+                            showsVerticalScrollIndicator={false}
+                            style={{ flex: 1, width: '100%' }}
+                            contentContainerStyle={{ paddingTop: 24, paddingBottom: insets.bottom + 24, paddingHorizontal: 24 }}
+                        />
+                    </>
+                    :
+                    <>
+                        <Header onBackPress={() => navigation.goBack()} />
+                        <View flex={1} justifyContent={'center'}>
+                            <ButtonAdd onPress={handleAddNewExercise} title='ADICIONE SEU EXERCÍCIO' />
+                        </View>
+                    </>
             }
 
             <InputPopup
