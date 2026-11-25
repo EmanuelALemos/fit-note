@@ -87,7 +87,7 @@ Itens 13 a 17 aprovados e incluídos na Etapa 1.
 
 1. **O Expo Go não enxerga os dados reais.** O uso diário é no APK, que tem armazenamento separado.
 2. **O APK antigo não pode ser atualizado.** O acesso à conta Expo `emanuel_alemos` foi perdido e, com ela, a chave de assinatura. Verificado neste computador: não há sessão do EAS, e uma busca na pasta do usuário (sem AppData, até 5 níveis) não achou o keystore. **A conta antiga está descartada: decidido não tentar recuperá-la.** A versão nova será um app separado, instalado ao lado do antigo.
-3. **Os dados reais só saem do app antigo por transcrição** (prints ou lista). Não haverá APK de backup do `f2900e8`. A transcrição pode ter erros, por isso há conferência (seção 10). Exercícios fora de todos os treinos não aparecem em tela nenhuma, mas voltam com carga e séries ao adicionar o nome exato a um treino no app antigo.
+3. **Os dados reais só saem do app antigo pela leitura da tela** (adb, seção 10). `adb backup` não serve: Android 13 e targetSdk 34. Não haverá APK de backup do `f2900e8`. Cargas decimais já tinham sido truncadas pelo app antigo. Exercícios fora de todos os treinos não aparecem em tela nenhuma, mas voltam com carga e séries ao adicionar o nome exato a um treino no app antigo.
 4. **Os dados são o estado atual, não 1 ano de histórico.** Como as cargas são sobrescritas (bug 5), a migração recupera só a última marca de cada exercício. Os gráficos começam a se formar na Etapa 4.
 5. **Expo Go e SDK 51:** a versão da loja costuma suportar só SDKs recentes. O celular precisa do Expo Go compatível com o SDK 51 ou de um build próprio. Notificações da Etapa 5 devem ser validadas em build próprio, com permissão de notificação (Android 13+) e de alarme exato (Android 12+).
 6. **Os dois apps não se comunicam.** Depois da importação, o que for registrado no antigo não chega ao novo. Trocar de vez, num dia definido.
@@ -282,7 +282,13 @@ Supino reto
 - Nome exatamente como aparece no app, inclusive acentos e erros de digitação.
 - Carga com vírgula ou ponto. O app antigo truncava decimais: é a hora de escrever o valor real.
 
-Quem faz: Emanuel passa a pasta com os prints, o Claude escreve a lista e Emanuel confere, principalmente as cargas com decimal. O Claude sinaliza tudo que estiver ilegível ou cortado, sem adivinhar. Emanoela terá uma lista separada. Prints e listas ficam fora do Git.
+### Extração pelo adb
+
+O `uiautomator dump` lê cada tela; `input tap` só abre treinos e exercícios, `input swipe` rola e a tecla Voltar sai. Nunca tocar em +, −, editar, excluir ou carga. Parar se houver outra janela em foco, modal, alerta, campo de texto ou tela inesperada. Celular parado, com Não perturbe. Duas passagens completas precisam ser idênticas.
+
+**Emanuel: concluída e aprovada.** 4 treinos, 22 exercícios, 65 séries, 27 vínculos; duas passagens idênticas; nenhuma duplicata. O treino "Lower B" foi excluído pelo Emanuel antes da leitura e fica de fora. Lista e leituras ficam em `Documents/FitNote-dados`, fora do Git. O script `npm run lista` deve chegar a esses mesmos totais.
+
+**Emanoela: pendente**, com o mesmo processo no celular de Emanoela. A decisão 8 pode se aplicar lá.
 
 ### Script no computador
 
@@ -290,7 +296,7 @@ Quem faz: Emanuel passa a pasta com os prints, o Claude escreve a lista e Emanue
 
 - **Erro, não gera arquivo:** linha ilegível, treino repetido, exercício repetido no mesmo treino, exercício sem dados em nenhum lugar, ou mesmo nome com valores diferentes (pode ser digitação ou dois exercícios iguais na aparência, como "Supino" e "Supino " com espaço).
 - **Aviso, gera arquivo:** nomes iguais após normalizar ("maquina" / "máquina"), com carga, séries e treinos de cada um. Decisão 8: caso a caso, corrigindo a própria lista; sem correção, vale a regra.
-- **Sempre:** relatório no formato das telas e totais, para conferir com os prints.
+- **Sempre:** relatório no formato das telas e totais, para conferir com o app antigo.
 
 ### Importação no app novo
 
@@ -304,9 +310,9 @@ Só aparece e só roda com o banco vazio; nunca mistura nem sobrescreve. Para re
 
 ### Roteiro da troca
 
-1. Transcrever agora, para testar. O script e o teste de migração no SQLite de Node rodam com o arquivo (`FITNOTE_BACKUP`).
+1. Lista do Emanuel pronta, para testar. O script e o teste de migração no SQLite de Node rodam com o arquivo (`FITNOTE_BACKUP`).
 2. Testar a importação no Expo Go ou build de teste.
-3. No dia da troca: atualizar na lista o que mudou, gerar o arquivo, importar e conferir todos os treinos com o app antigo lado a lado.
+3. No dia da troca: atualizar na lista o que mudou (repetindo a extração), gerar o arquivo, importar e conferir todos os treinos com o app antigo lado a lado.
 4. Repetir no celular de Emanoela com a lista de lá.
 5. Manter o app antigo instalado, sem uso, até algumas semanas de uso normal e um backup exportado do app novo.
 
