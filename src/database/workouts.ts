@@ -1,6 +1,7 @@
 import { AppError } from '@utils/AppError';
 
 import { Database } from './Database';
+import { createRest } from './rest';
 
 // Sem nenhum ✓ por esse tempo, o treino é encerrado no horário da última série.
 export const IDLE_LIMIT_MS = 3 * 60 * 60 * 1000;
@@ -33,6 +34,7 @@ export interface WorkoutExercise {
     loadKg: number;
     targetMin: number | null;
     targetMax: number | null;
+    restSeconds: number;
     last: LastMark | null;
     sets: PlannedSet[];
     saved: boolean; // false: sets é só uma sugestão, nada foi gravado no treino aberto
@@ -70,6 +72,7 @@ const sumReps = (sets: SetMark[]) => sets.reduce((total, set) => total + set.rep
 
 export function createWorkouts(db: Database, clock: () => Date) {
     const now = () => clock().toISOString();
+    const rest = createRest(db, clock);
 
     function readOpen(): OpenWorkout | null {
         return db.get<OpenWorkout>(`
@@ -89,6 +92,7 @@ export function createWorkouts(db: Database, clock: () => Date) {
 
     // Só as séries com ✓ ficam no histórico; sem nenhuma, o treino não é guardado.
     function close(sessionId: number, finishedAt: string): boolean {
+        rest.clear();
         db.run('DELETE FROM set_log WHERE session_id = ? AND completed_at IS NULL', [sessionId]);
 
         if (lastCompletedAt(sessionId) === null) {
@@ -96,10 +100,6 @@ export function createWorkouts(db: Database, clock: () => Date) {
             return false;
         }
 
-        db.run(
-            'UPDATE exercise SET default_sets = NULL WHERE id IN (SELECT exercise_id FROM set_log WHERE session_id = ?)',
-            [sessionId]
-        );
         db.run(`
             UPDATE session SET finished_at = ?,
                 training_name = COALESCE((SELECT name FROM training WHERE id = session.training_id), training_name)
@@ -180,10 +180,10 @@ export function createWorkouts(db: Database, clock: () => Date) {
 
     function requireExercise(id: number) {
         const exercise = db.get<{
-            id: number; name: string; loadKg: number; targetMin: number | null; targetMax: number | null; defaultSets: number | null;
+            id: number; name: string; loadKg: number; targetMin: number | null; targetMax: number | null; defaultSets: number | null; restSeconds: number;
         }>(`
             SELECT id, name, current_load_kg AS loadKg, target_reps_min AS targetMin,
-                target_reps_max AS targetMax, default_sets AS defaultSets
+                target_reps_max AS targetMax, default_sets AS defaultSets, rest_seconds AS restSeconds
             FROM exercise WHERE id = ?
         `, [id]);
 
@@ -205,6 +205,7 @@ export function createWorkouts(db: Database, clock: () => Date) {
         }
 
         // Sugestão: repetir a última vez. Um ✓ basta quando foi igual.
+        // A quantidade é a planejada; só muda ao adicionar ou remover série.
         const count = defaultSets ?? last?.sets.length ?? 0;
         const sets = Array.from({ length: count }, (_, index) => ({
             loadKg: exercise.loadKg,
@@ -239,6 +240,19 @@ export function createWorkouts(db: Database, clock: () => Date) {
             savePlan(open.id, exerciseId, plan);
             change(open.id, readSets(open.id, exerciseId));
         });
+    }
+
+    function setPlanned(exerciseId: number, sessionId: number) {
+        db.run(
+            'UPDATE exercise SET default_sets = (SELECT COUNT(*) FROM set_log WHERE session_id = ? AND exercise_id = ?) WHERE id = ?',
+            [sessionId, exerciseId, exerciseId]
+        );
+    }
+
+    function setLogId(sessionId: number, exerciseId: number, setNumber: number): number {
+        return db.get<{ id: number }>(
+            'SELECT id FROM set_log WHERE session_id = ? AND exercise_id = ? AND set_number = ?', [sessionId, exerciseId, setNumber]
+        )!.id;
     }
 
     function requireSet(sets: PlannedSet[], setNumber: number): PlannedSet {
@@ -287,6 +301,7 @@ export function createWorkouts(db: Database, clock: () => Date) {
     }
 
     return {
+        rest,
         getOpen,
         getLast,
         getExercise,
@@ -314,11 +329,12 @@ export function createWorkouts(db: Database, clock: () => Date) {
         discard(sessionId: number) {
             db.transaction(() => {
                 requireOpen(sessionId);
+                rest.clear();
                 db.run('DELETE FROM session WHERE id = ?', [sessionId]);
             });
         },
 
-        // O primeiro ✓ inicia o treino. Com outro treino aberto, a série entra nele.
+        // O primeiro ✓ inicia o treino e o descanso. Com outro treino aberto, a série entra nele.
         setDone(trainingId: number, exerciseId: number, setNumber: number, done: boolean, plan: PlannedSet[]) {
             db.transaction(() => {
                 requireExercise(exerciseId);
@@ -336,8 +352,17 @@ export function createWorkouts(db: Database, clock: () => Date) {
                     throw new AppError('Informe as repetições antes de concluir a série.');
                 }
 
-                if (done !== set.done) {
-                    updateSet(sessionId, exerciseId, setNumber, 'completed_at', done ? now() : null);
+                if (done === set.done) {
+                    return;
+                }
+
+                updateSet(sessionId, exerciseId, setNumber, 'completed_at', done ? now() : null);
+                const id = setLogId(sessionId, exerciseId, setNumber);
+
+                if (done) {
+                    rest.start(exerciseId, id);
+                } else {
+                    rest.cancelForSet(id);
                 }
             });
         },
@@ -365,6 +390,7 @@ export function createWorkouts(db: Database, clock: () => Date) {
                     'INSERT INTO set_log (session_id, exercise_id, set_number, load_kg, reps) VALUES (?, ?, ?, ?, ?)',
                     [sessionId, exerciseId, sets.length + 1, loadKg, sets[sets.length - 1]?.reps ?? targetMin ?? 0]
                 );
+                setPlanned(exerciseId, sessionId);
             });
         },
 
@@ -374,10 +400,11 @@ export function createWorkouts(db: Database, clock: () => Date) {
                     'DELETE FROM set_log WHERE session_id = ? AND exercise_id = ? AND set_number = ?',
                     [sessionId, exerciseId, sets.length]
                 );
+                setPlanned(exerciseId, sessionId);
             });
         },
 
-        // Sem treino aberto, guarda só quantas séries planejar; vale até o próximo treino com o exercício.
+        // Quantas séries planejar. Fica até o próximo + ou −; o histórico guarda só as concluídas.
         setDefaultSets(exerciseId: number, count: number) {
             requireExercise(exerciseId);
             db.run('UPDATE exercise SET default_sets = ? WHERE id = ?', [Math.max(0, count), exerciseId]);

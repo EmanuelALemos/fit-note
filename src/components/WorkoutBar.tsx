@@ -2,6 +2,7 @@ import { Text, View } from 'native-base';
 import { Alert, TouchableOpacity } from 'react-native';
 
 import { useDatabase } from '@database/DatabaseProvider';
+import { formatClock } from '@database/rest';
 import { OpenWorkout } from '@database/workouts';
 import { AppError } from '@utils/AppError';
 import { formatDuration } from '@utils/format';
@@ -11,11 +12,12 @@ import { ActionButton } from './ActionButton';
 interface WorkoutBarProps {
     trainingId: number;
     open: OpenWorkout | null;
+    restSeconds?: number | null; // descanso correndo
     onChange: () => void;
     onFinished: (sessionId: number) => void;
 }
 
-export function WorkoutBar({ trainingId, open, onChange, onFinished }: WorkoutBarProps) {
+export function WorkoutBar({ trainingId, open, restSeconds, onChange, onFinished }: WorkoutBarProps) {
     const { repository: { workouts } } = useDatabase();
 
     function run(task: () => void) {
@@ -76,7 +78,7 @@ export function WorkoutBar({ trainingId, open, onChange, onFinished }: WorkoutBa
         <View>
             <View flexDirection='row' alignItems='center' justifyContent='space-between' mb={2}>
                 <Text flex={1} mr={3} color='#D9F99D' fontSize={14} numberOfLines={1} fontFamily={'Poppins_600SemiBold'} allowFontScaling={false}>
-                    {`● ${open.trainingName} em andamento · ${elapsed}`}
+                    {restSeconds ? `● Descanso ${formatClock(restSeconds)} · ${open.trainingName}` : `● ${open.trainingName} em andamento · ${elapsed}`}
                 </Text>
                 <TouchableOpacity onPress={() => handleDiscard(open)} hitSlop={12} accessibilityRole='button'>
                     <Text color='white' fontSize={14} underline fontFamily={'Poppins_600SemiBold'} allowFontScaling={false}>Descartar</Text>

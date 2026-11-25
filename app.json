@@ -19,13 +19,23 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#404040"
       },
-      "package": "com.emanuellemos.fitnote"
+      "package": "com.emanuellemos.fitnote",
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#404040"
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -9,10 +9,12 @@ import BackgroundImage from '@assets/padrões.png';
 import { ExerciseLoadCard } from '@components/ExerciseLoadCard';
 import { Header } from '@components/Header';
 import { InputPopup } from '@components/InputPopup';
+import { RestBar } from '@components/RestBar';
 import { SerieBodyCard } from '@components/SerieBodyCard';
 import { SerieHeaderCard } from '@components/SerieHeaderCard';
 
 import { useDatabase } from '@database/DatabaseProvider';
+import { formatClock, parseRestSeconds } from '@database/rest';
 import { PlannedSet } from '@database/workouts';
 
 import { SeriesScreenProps } from '@routes/routeTypes';
@@ -20,6 +22,7 @@ import { AppError } from '@utils/AppError';
 import { formatDuration, formatTarget } from '@utils/format';
 import { formatLoad, parseLoad } from '@utils/load';
 import { useRefresh } from '@utils/useRefresh';
+import { useRest } from '@utils/useRest';
 
 const FONT = 'Poppins_600SemiBold';
 
@@ -37,6 +40,8 @@ export function Series({ navigation, route }: SeriesScreenProps) {
 
     const [view, setView] = useState(read);
     const [editing, setEditing] = useState<LoadEditing>(null);
+    const [editingRest, setEditingRest] = useState(false);
+    const { rest, remainingSeconds, changed: restChanged } = useRest();
 
     const { open, exercise } = view;
     const { sets, last, loadKg } = exercise;
@@ -67,6 +72,7 @@ export function Series({ navigation, route }: SeriesScreenProps) {
             return false;
         } finally {
             refresh();
+            restChanged();
         }
     }
 
@@ -161,6 +167,19 @@ export function Series({ navigation, route }: SeriesScreenProps) {
         }
     }
 
+    async function handleSaveRest(inputText: string) {
+        const seconds = parseRestSeconds(inputText);
+
+        if (seconds === null) {
+            Alert.alert('Descanso', 'Use minutos:segundos, como 1:30, ou só os segundos.');
+            return;
+        }
+
+        if (write(() => workouts.rest.setSeconds(exerciseId, seconds), 'Não foi possível salvar o descanso')) {
+            setEditingRest(false);
+        }
+    }
+
     useRefresh(refresh);
 
     const target = formatTarget(exercise.targetMin, exercise.targetMax);
@@ -238,10 +257,30 @@ export function Series({ navigation, route }: SeriesScreenProps) {
                     style={{ flex: 1 }}
                 />
 
-                <View pt={4} style={{ paddingBottom: insets.bottom + 24 }}>
+                <View pt={3} style={{ paddingBottom: insets.bottom + 16 }}>
+                    <RestBar
+                        exerciseId={exerciseId}
+                        restSeconds={exercise.restSeconds}
+                        rest={rest}
+                        remainingSeconds={remainingSeconds}
+                        onChange={restChanged}
+                        onEditDefault={() => setEditingRest(true)}
+                    />
+                    <View h='12px' />
                     <ExerciseLoadCard load={loadKg} lastLoad={last?.loadKg} onPressEdit={() => setEditing('exercise')} />
                 </View>
             </View>
+
+            <InputPopup
+                isOpen={editingRest}
+                onClose={() => setEditingRest(false)}
+                onSave={handleSaveRest}
+                initialText={formatClock(exercise.restSeconds)}
+                placeholder='1:30'
+                hint='Minutos:segundos. Vale para os próximos descansos deste exercício.'
+                title='Descanso'
+                keyboardType='numbers-and-punctuation'
+            />
 
             <InputPopup
                 isOpen={editing !== null}

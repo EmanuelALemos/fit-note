@@ -20,6 +20,7 @@ import { ExerciseScreenProps } from '@routes/routeTypes';
 import { AppError } from '@utils/AppError';
 import { formatLast, formatTarget, parseTarget } from '@utils/format';
 import { useRefresh } from '@utils/useRefresh';
+import { useRest } from '@utils/useRest';
 
 export function Exercise({ navigation, route }: ExerciseScreenProps) {
     const { trainingId, trainingName } = route.params;
@@ -150,6 +151,8 @@ export function Exercise({ navigation, route }: ExerciseScreenProps) {
         }
     }
 
+    const { rest, remainingSeconds, changed: restChanged } = useRest();
+
     useRefresh(refresh);
 
     return (
@@ -190,7 +193,8 @@ export function Exercise({ navigation, route }: ExerciseScreenProps) {
                         <WorkoutBar
                             trainingId={trainingId}
                             open={open}
-                            onChange={refresh}
+                            restSeconds={rest ? remainingSeconds : null}
+                            onChange={() => { refresh(); restChanged(); }}
                             onFinished={sessionId => navigation.navigate('summary', { sessionId })}
                         />
                     </View>

@@ -103,7 +103,8 @@ test('finalizar guarda só as séries com ✓ e sugere a última vez em qualquer
 
     workouts.start(upperB);
     expect(workouts.getExercise(supino)).toMatchObject({ saved: false });
-    expect(view()).toEqual([[20, 10, false], [20, 8, false]]);
+    // 3 planejadas, mesmo com 2 concluídas; a 3ª repete a última repetição conhecida
+    expect(view()).toEqual([[20, 10, false], [20, 8, false], [20, 8, false]]);
 });
 
 test('finalizar sem nenhum ✓ não guarda nada', () => {
@@ -284,4 +285,18 @@ test('formatos', () => {
     expect(formatDuration(52 * 60000)).toBe('52 min');
     expect(formatDuration(65 * 60000)).toBe('1 h 05');
     expect([formatDelta(1), formatDelta(0), formatDelta(-2.5, ' kg')]).toEqual(['↑ +1', '= igual', '↓ −2,5 kg']);
+});
+
+test('séries planejadas só mudam com + e −, também durante o treino', () => {
+    workouts.setTarget(supino, { min: 8, max: 12 });
+    workouts.setDefaultSets(supino, 4);
+    workouts.start(upperA);
+    workouts.removeLastSet(supino, plan());
+    expect(db.get('SELECT default_sets AS n FROM exercise WHERE id = ?', [supino])).toEqual({ n: 3 });
+    workouts.setDone(upperA, supino, 1, true, plan());
+    workouts.finish(workouts.getOpen()!.id);
+    expect(view()).toHaveLength(3);
+    workouts.start(upperA);
+    workouts.addSet(supino, plan());
+    expect(db.get('SELECT default_sets AS n FROM exercise WHERE id = ?', [supino])).toEqual({ n: 4 });
 });
