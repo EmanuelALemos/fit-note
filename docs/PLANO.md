@@ -9,7 +9,8 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 | Etapa | Conteúdo | Estado |
 |---|---|---|
 | 1 | Correções sem mudar o modelo | Implementada; aguardando teste no celular |
-| 2 | SQLite, repositório e migração | Não iniciada |
+| 1b | App novo: identidade, conta e keystore (seção 9) | Aguardando aprovação |
+| 2 | SQLite, repositório, migração e importação | Não iniciada |
 | 3 | Renomear e reordenar | Não iniciada |
 | 4 | Sessões | Não iniciada |
 | 5 | Timer de descanso | Não iniciada |
@@ -29,6 +30,7 @@ Substituir o caderno da academia e facilitar a **sobrecarga progressiva**: chega
 ## 2. Regras de trabalho
 
 - Uma branch e um commit/PR por etapa. **Parar no fim de cada etapa** para o Emanuel testar no celular.
+- **Nunca desinstalar nem limpar os dados do app antigo**, em nenhum dos celulares, até os dados estarem conferidos no app novo.
 - **Nunca apagar as chaves antigas do AsyncStorage.** Qualquer ação destrutiva ou irreversível: perguntar antes.
 - Ao fim de cada etapa: `npx tsc --noEmit` e testes.
 - Pacotes nativos sempre com `npx expo install`.
@@ -83,12 +85,14 @@ Itens 13 a 17 aprovados e incluídos na Etapa 1.
 
 ## 5. Riscos
 
-1. **O Expo Go não enxerga os dados reais.** Segundo o README, o uso diário é no APK, que tem armazenamento separado. No Expo Go, a migração só pode ser testada com dados de exemplo.
-2. **O APK novo precisa instalar por cima do antigo** (mesmo pacote `com.emanuel_alemos.FitNote` e mesma chave de assinatura). Nunca desinstalar o antigo: isso apaga os dados. Conferir a assinatura (seção 9) antes de instalar **qualquer** APK novo, inclusive o do backup.
-3. **Não existe backup.** Aprovado: a Etapa 1 traz um botão mínimo e somente leitura que compartilha o JSON bruto das duas chaves. Instalar esse APK, exportar e guardar o arquivo antes da Etapa 2. O mesmo arquivo serve para testar a migração com dados reais (sem ir para o Git).
+1. **O Expo Go não enxerga os dados reais.** O uso diário é no APK, que tem armazenamento separado.
+2. **O APK antigo não pode ser atualizado.** O acesso à conta Expo `emanuel_alemos` foi perdido e, com ela, a chave de assinatura. Verificado neste computador: não há sessão do EAS nem cópia do keystore. A versão nova será um app separado, instalado ao lado do antigo.
+3. **Os dados reais só saem do app antigo por transcrição** (prints ou lista). Não haverá APK de backup do `f2900e8`. A transcrição pode ter erros, por isso há conferência (seção 10). Exercícios fora de todos os treinos não aparecem em tela nenhuma e não podem ser recuperados.
 4. **Os dados são o estado atual, não 1 ano de histórico.** Como as cargas são sobrescritas (bug 5), a migração recupera só a última marca de cada exercício. Os gráficos começam a se formar na Etapa 4.
 5. **Expo Go e SDK 51:** a versão da loja costuma suportar só SDKs recentes. O celular precisa do Expo Go compatível com o SDK 51 ou de um build próprio. Notificações da Etapa 5 devem ser validadas em build próprio, com permissão de notificação (Android 13+) e de alarme exato (Android 12+).
-6. **Voltar ao APK antigo após a migração** mostra os dados congelados no dia dela, pois o AsyncStorage deixa de receber escritas.
+6. **Os dois apps não se comunicam.** Depois da importação, o que for registrado no antigo não chega ao novo. Trocar de vez, num dia definido.
+7. **Há dois celulares.** Emanoela também usa o app; os dados de lá precisam de lista e importação próprias.
+8. **Perder outra vez a conta ou o keystore** repetiria o problema: ver seção 9.
 
 ## 6. Nova camada de dados (SQLite local)
 
@@ -120,11 +124,17 @@ Acesso centralizado em `src/database/`. Telas não usam SQL nem AsyncStorage. Es
 
 ### Migração (crítica)
 
-1. Roda na abertura, antes das telas, se a flag de conclusão não existir, o SQLite estiver vazio e houver chaves antigas.
-2. Lê e valida os JSONs. JSON inválido: aborta, não grava nada, não marca a flag e mostra erro claro.
-3. Em **uma transação**: gera IDs, cria exercícios (dedupe por nome normalizado), treinos e vínculos na ordem atual, uma sessão importada por exercício com as séries e a carga atuais, e a flag.
-4. Compara contagens e só então confirma.
-5. Não altera nem apaga o AsyncStorage.
+O núcleo recebe os dados antigos já lidos, sem saber a origem, e há duas origens:
+
+- **Arquivo de backup importado** (seção 10): o caminho real, pois o app novo começa vazio.
+- **Chaves antigas do AsyncStorage**, na primeira abertura com SQLite vazio e sem a flag: mantida para quem tiver dados criados na Etapa 1 (Expo Go ou build de teste).
+
+Nas duas:
+
+1. Lê e valida os JSONs. JSON inválido: aborta, não grava nada, não marca a flag e mostra erro claro.
+2. Em **uma transação**: gera IDs, cria exercícios (dedupe por nome normalizado), treinos e vínculos na ordem atual, uma sessão importada por exercício com as séries e a carga atuais, e a flag.
+3. Compara contagens e só então confirma.
+4. Não altera nem apaga o AsyncStorage.
 
 Casos a testar:
 
@@ -137,6 +147,8 @@ Casos a testar:
 - exercício sem séries mas com carga; série com 0 repetições; carga nula ou inválida
 - nomes com `°` e com `ª`; ordem preservada
 - AsyncStorage idêntico antes e depois
+- arquivo importado e AsyncStorage com os mesmos dados geram o mesmo banco
+- importação recusada com SQLite não vazio
 
 **Testes [proposta]:** `jest-expo`, com o repositório sobre uma interface pequena para rodar o mesmo SQL em um SQLite de Node.
 
@@ -156,9 +168,15 @@ Aceite:
 
 Verificado sem celular: `tsc`, testes automáticos e geração do bundle Android. Layout, teclado e compartilhamento dependem do teste no aparelho.
 
-### Etapa 2: SQLite, repositório, migração e telas atuais adaptadas
+### Etapa 1b: identidade do app novo
 
-Mesmo comportamento visível. Aceite: testes da migração verdes, migração validada com o backup real e nenhuma tela usando o storage antigo.
+Seção 9. PR pequeno, só de configuração. Precisa da conta Expo nova.
+
+### Etapa 2: SQLite, repositório, migração, importação e telas atuais adaptadas
+
+Mesmo comportamento visível, mais a importação (seção 10). Aceite: testes da migração verdes, migração validada com o arquivo gerado da lista, conferência com o app antigo e nenhuma tela usando o storage antigo.
+
+**[proposta]** O botão de backup lê o AsyncStorage e deixaria de exportar dados atuais quando o SQLite entrar. Nesta etapa ele passa a exportar o SQLite inteiro (formato `version: 2`) e a importação aceita os formatos 1 e 2. Antecipa o item "exportar/importar backup" que estava fora do escopo.
 
 ### Etapa 3: renomear e reordenar
 
@@ -211,23 +229,83 @@ Perguntar antes de implementar a parte afetada.
 | 5 | Incluir na Etapa 1 a exportação de segurança? | 1 | **Sim**, no primeiro commit |
 | 6 | Incluir na Etapa 1 os itens 13 a 17? (O 13 é necessário para o 9) | 1 | **Sim** |
 | 7 | Normalização ignora acentos ("maquina" = "máquina")? | 2 | **Sim**, só para detectar duplicatas; o nome exibido não muda |
-| 8 | Duplicatas com marcas diferentes: qual vale? Os dados antigos não têm data | 2 | O teste com o backup real **lista as duplicatas e o Emanuel decide caso a caso**. Se forem muitas, vale a regra: maior carga fica como atual e a outra vira sessão importada anterior |
+| 8 | Duplicatas com marcas diferentes: qual vale? Os dados antigos não têm data | 2 | O relatório da lista transcrita **lista as duplicatas e o Emanuel decide caso a caso**. Se forem muitas, vale a regra: maior carga fica como atual e a outra vira sessão importada anterior |
 | 9 | Aprovar os ajustes sugeridos no esquema (seção 6)? | 2 | **Sim** |
+| 10 | Package e nome do app novo (seção 9)? | 1b | |
+| 11 | Formato da lista e importação (seção 10)? | 2 | |
+| 12 | Exportação/importação completa já na Etapa 2? | 2 | |
 
-## 9. Antes da Etapa 2
+## 9. App novo: identidade e chave de assinatura [proposta]
 
-### Conferir a assinatura do APK
+Valores em `app.json`:
 
-1. Chave guardada no EAS: `npx eas-cli credentials -p android`, perfil `preview`. Anotar o **SHA-256** do keystore. Só consultar: nunca escolher opções de criar, trocar ou apagar keystore.
-2. Assinatura do APK em uso: pegar o arquivo do APK (página do build no EAS ou `adb shell pm path com.emanuel_alemos.FitNote` e `adb pull <caminho>`) e rodar `apksigner verify --print-certs <arquivo>.apk` (Android SDK build-tools).
-3. Os dois SHA-256 precisam ser iguais. Se forem diferentes, parar: o APK novo não instala por cima. **Não desinstalar o antigo.**
-4. Comparar o versionCode remoto (`npx eas-cli build:version:get -p android`) com o instalado (`adb shell dumpsys package com.emanuel_alemos.FitNote | grep versionCode`). O do APK novo não pode ser menor que o instalado, senão o Android recusa a atualização.
+| Campo | Hoje | Proposta |
+|---|---|---|
+| `android.package` | `com.emanuel_alemos.FitNote` | `com.emanuellemos.fitnote` |
+| `name` | FitNote | Fit Note |
+| `slug` | FitNote | `fit-note` |
+| `version` | 1.1.1 | 2.0.0 |
+| `extra.eas.projectId` | o da conta perdida | removido; o `eas init` grava o novo |
 
-### Testar a migração com o JSON exportado, sem tocar no APK
+O package só pode ser trocado antes do primeiro uso real: depois, mudá-lo cria outro app.
 
-Formato: `{ app, version, exportedAt, asyncStorage: { "<chave>": "<texto bruto>" } }`. Nome `fitnote-backup-*.json`, ignorado pelo Git. Entregar na Etapa 2:
+Passos do Emanuel (login e chaves não passam pelo Claude nem pelo Git):
 
-1. **No computador:** teste que recebe o caminho do arquivo por `FITNOTE_BACKUP`, executa a migração num SQLite de Node, confere contagens, cargas, repetições e ordem, e imprime um relatório com **todas as duplicatas encontradas** (nomes originais, carga, séries e treinos de cada uma). Sem a variável, o teste é pulado.
-2. **No Expo Go (ou build de desenvolvimento com outro pacote):** ação "importar backup de teste", só em `__DEV__`, que carrega o JSON no AsyncStorage daquele app antes da migração. Recusa se já houver dados.
+1. Criar a conta Expo com um e-mail de acesso garantido, ativar 2FA e guardar senha e códigos de recuperação num gerenciador de senhas. Usar uma organização com Emanoela como segundo membro com permissão de administrar é recomendado.
+2. `npx eas-cli login` e, com o `projectId` antigo já removido, `npx eas-cli init`.
+3. `npx eas-cli build -p android --profile preview`, deixando o EAS gerar o keystore.
+4. **Antes de usar o app de verdade:** `npx eas-cli credentials -p android` → perfil `preview` → baixar as credenciais para o computador (`credentials.json` + keystore). Guardar o `.jks`, as senhas do keystore e da chave, e o alias, em dois lugares fora do computador. Anotar o SHA-256.
+5. Provar o backup: `keytool -list -v -keystore <arquivo>.jks` deve abrir com a senha guardada e mostrar o mesmo SHA-256 que `apksigner verify --print-certs` mostra no APK.
+6. Provar a atualização: gerar um segundo build e instalar por cima, com dados de teste, antes de importar os reais.
+
+No Git: `*.jks` já é ignorado; acrescentar `credentials.json`, `credentials/` e as listas de dados.
+
+## 10. Dados do app antigo: da lista ao app novo [proposta]
+
+### Formato da lista
+
+Um arquivo de texto UTF-8 por pessoa, `fitnote-lista-<pessoa>.txt`, fora do Git:
+
+```text
+# Upper A
+Supino reto | 22,5 | 10 8 7
+Remada curvada | 40 | 12 12 10
+Elevação lateral | 8 | -
+
+# Upper B
+Supino reto
+```
+
+- `# Nome` abre um treino. Treinos e exercícios na ordem da tela.
+- Exercício: `nome | carga em kg | repetições de cada série`. `-` = nenhuma série.
+- Exercício que se repete em outro treino: só o nome basta.
+- Nome exatamente como aparece no app, inclusive acentos e erros de digitação.
+- Carga com vírgula ou ponto. O app antigo truncava decimais: é a hora de escrever o valor real.
+
+### Script no computador
+
+`npm run lista -- fitnote-lista-emanuel.txt` gera `fitnote-backup-<data>.json` no mesmo formato do botão de backup (versão 1), com `source: "transcricao"`. Não altera a lista e não usa rede.
+
+- **Erro, não gera arquivo:** linha ilegível, treino repetido, exercício repetido no mesmo treino, exercício sem dados em nenhum lugar, ou mesmo nome com valores diferentes (pode ser digitação ou dois exercícios iguais na aparência, como "Supino" e "Supino " com espaço).
+- **Aviso, gera arquivo:** nomes iguais após normalizar ("maquina" / "máquina"), com carga, séries e treinos de cada um. Decisão 8: caso a caso, corrigindo a própria lista; sem correção, vale a regra.
+- **Sempre:** relatório no formato das telas e totais, para conferir com os prints.
+
+### Importação no app novo
+
+Na tela inicial vazia, abaixo de "ADICIONE SEU TREINO", a opção discreta "Importar backup" abre o seletor de arquivos (`expo-document-picker`). Não adiciona toques durante o treino.
+
+1. Lê e valida o arquivo inteiro.
+2. Mostra o resumo ("5 treinos, 32 exercícios, 96 séries, 1 duplicata") e pede confirmação.
+3. Executa a migração em uma transação. Erro: nada é gravado.
+
+Só aparece e só roda com o banco vazio; nunca mistura nem sobrescreve. Para refazer, reinstalar o app **novo** antes de usá-lo.
+
+### Roteiro da troca
+
+1. Transcrever agora, para testar. O script e o teste de migração no SQLite de Node rodam com o arquivo (`FITNOTE_BACKUP`).
+2. Testar a importação no Expo Go ou build de teste.
+3. No dia da troca: atualizar na lista o que mudou, gerar o arquivo, importar e conferir todos os treinos com o app antigo lado a lado.
+4. Repetir no celular de Emanoela com a lista de lá.
+5. Manter o app antigo instalado, sem uso, até algumas semanas de uso normal e um backup exportado do app novo.
 
 Mockups: https://claude.ai/artifact/C4TgGYGhYBc8rowCmznTez (as descrições deste plano bastam; se algo ficar ambíguo, perguntar).
