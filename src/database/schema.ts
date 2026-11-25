@@ -2,7 +2,7 @@ import { AppError } from '@utils/AppError';
 
 import { Database } from './Database';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 // Na ordem em que as chaves estrangeiras permitem inserir.
 export const TABLES = ['meta', 'exercise', 'training', 'training_exercise', 'session', 'set_log'] as const;
@@ -40,7 +40,6 @@ CREATE TABLE training_exercise (
     PRIMARY KEY (training_id, exercise_id)
 ) STRICT;
 
--- 'imported' com finished_at NULL é o estado atual do exercício, editável até a Etapa 4.
 CREATE TABLE session (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     training_id INTEGER REFERENCES training (id) ON DELETE SET NULL,
@@ -66,6 +65,13 @@ CREATE TABLE set_log (
 CREATE INDEX set_log_exercise ON set_log (exercise_id, session_id);
 `;
 
+// Até a versão 1, a sessão importada aberta era o estado atual do exercício. Agora ela é histórico.
+export const CLOSE_IMPORTED = `
+UPDATE session SET finished_at = COALESCE(
+    (SELECT MAX(completed_at) FROM set_log WHERE session_id = session.id), started_at
+) WHERE kind = 'imported' AND finished_at IS NULL
+`;
+
 export function prepareSchema(db: Database) {
     db.exec('PRAGMA journal_mode = WAL');
     db.exec('PRAGMA foreign_keys = ON');
@@ -80,6 +86,13 @@ export function prepareSchema(db: Database) {
         db.transaction(() => {
             db.exec(VERSION_1);
             db.exec('PRAGMA user_version = 1');
+        });
+    }
+
+    if (version < 2) {
+        db.transaction(() => {
+            db.exec(CLOSE_IMPORTED);
+            db.exec('PRAGMA user_version = 2');
         });
     }
 }

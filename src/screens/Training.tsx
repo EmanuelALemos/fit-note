@@ -1,8 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { View, Image } from 'native-base';
 import { Alert } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BackgroundImage from '@assets/padrões.png';
@@ -20,12 +19,15 @@ import { TrainingSummary } from '@database/repository';
 
 import { TrainingScreenProps } from '@routes/routeTypes';
 import { AppError } from '@utils/AppError';
+import { formatDay } from '@utils/format';
+import { useRefresh } from '@utils/useRefresh';
 
 export function Training({ navigation }: TrainingScreenProps) {
     const insets = useSafeAreaInsets();
     const { repository } = useDatabase();
 
     const [trainings, setTrainings] = useState(() => repository.listTrainings());
+    const [open, setOpen] = useState(() => repository.workouts.getOpen());
     const [canImport, setCanImport] = useState(() => repository.isEmpty());
     const [modalOpen, setModalOpen] = useState(false);
     const [editingTraining, setEditingTraining] = useState<TrainingSummary | undefined>(undefined);
@@ -33,6 +35,7 @@ export function Training({ navigation }: TrainingScreenProps) {
 
     function refresh() {
         try {
+            setOpen(repository.workouts.getOpen());
             setTrainings(repository.listTrainings());
             setCanImport(repository.isEmpty());
         } catch (error) {
@@ -80,7 +83,7 @@ export function Training({ navigation }: TrainingScreenProps) {
             refresh();
         } catch (error) {
             console.log(error);
-            Alert.alert('Erro', 'Não foi possível excluir o treino.');
+            Alert.alert('Erro', error instanceof AppError ? error.message : 'Não foi possível excluir o treino.');
         }
     }
 
@@ -107,9 +110,17 @@ export function Training({ navigation }: TrainingScreenProps) {
         }
     }
 
-    useFocusEffect(useCallback(() => {
-        refresh();
-    }, []));
+    function describe({ id, exerciseCount, lastWorkoutAt }: TrainingSummary) {
+        const count = `${exerciseCount} ${exerciseCount === 1 ? 'exercício' : 'exercícios'}`;
+
+        if (open?.trainingId === id) {
+            return `${count} · em andamento`;
+        }
+
+        return lastWorkoutAt ? `${count} · último: ${formatDay(lastWorkoutAt)}` : count;
+    }
+
+    useRefresh(refresh);
 
     return (
         <View bg='#404040' flex={1} justifyContent="center" alignItems='center'>
@@ -129,11 +140,12 @@ export function Training({ navigation }: TrainingScreenProps) {
                     <Header title='TREINOS' onAddPress={handleAddNewTraining} />
                     <DraggableFlatList
                         data={trainings}
+                        extraData={open}
                         keyExtractor={item => String(item.id)}
                         renderItem={({ item, drag, isActive }) => (
                             <Card
                                 name={item.name}
-                                details={`${item.exerciseCount} ${item.exerciseCount === 1 ? 'exercício' : 'exercícios'}`}
+                                details={describe(item)}
                                 onPressMenu={() => setMenuTraining(item)}
                                 onDrag={drag}
                                 isDragging={isActive}

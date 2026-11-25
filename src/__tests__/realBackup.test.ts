@@ -23,7 +23,8 @@ const file = process.env.FITNOTE_BACKUP;
         return {
             name: training.name,
             exercises: repository.listExercises(training.id).map(item => {
-                const { name, loadKg, repetitions } = repository.getExercise(item.id);
+                const { name, loadKg, last } = repository.workouts.getExercise(item.id);
+                const repetitions = last?.sets.map(set => set.reps) ?? [];
                 lines.push(`  ${name}: ${loadKg} kg · ${repetitions.join('/') || 'sem séries'}`);
                 return { name, loadKg, repetitions };
             }),

@@ -10,9 +10,10 @@ interface HeaderProps {
     onAddPress?: () => void;
     title?: string;
     subtitle?: string;
+    status?: string;
 }
 
-export function Header({ onBackPress, onAddPress, title, subtitle }: HeaderProps) {
+export function Header({ onBackPress, onAddPress, title, subtitle, status }: HeaderProps) {
     const insets = useSafeAreaInsets();
 
     return (
@@ -32,6 +33,8 @@ export function Header({ onBackPress, onAddPress, title, subtitle }: HeaderProps
                         fontSize={32}
                         fontFamily={'Poppins_600SemiBold'}
                         numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.6}
                         ellipsizeMode="tail"
                         allowFontScaling={false}
                         textAlign={'center'}
@@ -50,6 +53,19 @@ export function Header({ onBackPress, onAddPress, title, subtitle }: HeaderProps
                         textAlign={'center'}
                     >
                         {subtitle}
+                    </Text>
+                )}
+
+                {status && (
+                    <Text
+                        color='#D9F99D'
+                        fontFamily={'Poppins_600SemiBold'}
+                        fontSize={14}
+                        numberOfLines={1}
+                        allowFontScaling={false}
+                        textAlign={'center'}
+                    >
+                        {status}
                     </Text>
                 )}
 

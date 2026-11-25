@@ -1,8 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Image } from 'native-base';
 import { Alert } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BackgroundImage from '@assets/padrões.png';
@@ -12,12 +11,15 @@ import { Card } from '@components/Card';
 import { CardMenu } from '@components/CardMenu';
 import { Header } from '@components/Header';
 import { InputPopup } from '@components/InputPopup';
+import { WorkoutBar } from '@components/WorkoutBar';
 
 import { useDatabase } from '@database/DatabaseProvider';
 import { Exercise as ExerciseItem } from '@database/repository';
 
 import { ExerciseScreenProps } from '@routes/routeTypes';
 import { AppError } from '@utils/AppError';
+import { formatLast, formatTarget, parseTarget } from '@utils/format';
+import { useRefresh } from '@utils/useRefresh';
 
 export function Exercise({ navigation, route }: ExerciseScreenProps) {
     const { trainingId, trainingName } = route.params;
@@ -25,14 +27,22 @@ export function Exercise({ navigation, route }: ExerciseScreenProps) {
     const insets = useSafeAreaInsets();
     const { repository } = useDatabase();
 
-    const [exercises, setExercises] = useState(() => repository.listExercises(trainingId));
+    const read = () => repository.listExercises(trainingId).map(item => ({
+        ...item,
+        details: formatLast(repository.workouts.getLast(item.id)),
+    }));
+
+    const [exercises, setExercises] = useState(read);
+    const [open, setOpen] = useState(() => repository.workouts.getOpen());
+    const [targetExercise, setTargetExercise] = useState<ExerciseItem & { target?: string } | undefined>(undefined);
     const [modalOpen, setModalOpen] = useState(false);
     const [renaming, setRenaming] = useState<ExerciseItem & { hint: string } | undefined>(undefined);
     const [menuExercise, setMenuExercise] = useState<ExerciseItem | undefined>(undefined);
 
     function refresh() {
         try {
-            setExercises(repository.listExercises(trainingId));
+            setOpen(repository.workouts.getOpen());
+            setExercises(read());
         } catch (error) {
             console.log(error);
             Alert.alert('Erro', 'Não foi possível carregar os exercícios.');
@@ -81,6 +91,32 @@ export function Exercise({ navigation, route }: ExerciseScreenProps) {
         }
     }
 
+    function handleTarget(exercise: ExerciseItem) {
+        try {
+            const { targetMin, targetMax } = repository.workouts.getExercise(exercise.id);
+            setTargetExercise({ ...exercise, target: formatTarget(targetMin, targetMax) });
+        } catch (error) {
+            console.log(error);
+            Alert.alert('Erro', 'Não foi possível carregar o exercício.');
+        }
+    }
+
+    async function handleSaveTarget(inputText: string) {
+        const target = parseTarget(inputText);
+
+        if (target === undefined) {
+            return Alert.alert('Faixa alvo', 'Use um formato como 8-12.');
+        }
+
+        try {
+            repository.workouts.setTarget(targetExercise!.id, target);
+            setTargetExercise(undefined);
+        } catch (error) {
+            console.log(error);
+            Alert.alert('Erro', 'Não foi possível salvar a faixa alvo.');
+        }
+    }
+
     function exerciseRemove(id: number) {
         try {
             repository.removeExercise(trainingId, id);
@@ -102,7 +138,7 @@ export function Exercise({ navigation, route }: ExerciseScreenProps) {
         );
     }
 
-    function handleReorder(reordered: ExerciseItem[]) {
+    function handleReorder(reordered: typeof exercises) {
         setExercises(reordered);
 
         try {
@@ -114,9 +150,7 @@ export function Exercise({ navigation, route }: ExerciseScreenProps) {
         }
     }
 
-    useFocusEffect(useCallback(() => {
-        refresh();
-    }, []));
+    useRefresh(refresh);
 
     return (
         <View bg='#404040' flex={1} alignItems='center'>
@@ -136,10 +170,12 @@ export function Exercise({ navigation, route }: ExerciseScreenProps) {
                         renderItem={({ item, drag, isActive }) => (
                             <Card
                                 name={item.name}
+                                details={item.details}
                                 onPressMenu={() => setMenuExercise(item)}
                                 onDrag={drag}
                                 isDragging={isActive}
                                 onPressNavigate={() => navigation.navigate('series', {
+                                    trainingId,
                                     exerciseId: item.id,
                                     exerciseName: item.name,
                                 })}
@@ -148,8 +184,16 @@ export function Exercise({ navigation, route }: ExerciseScreenProps) {
                         showsVerticalScrollIndicator={false}
                         onDragEnd={({ from, to, data }) => from !== to && handleReorder(data)}
                         containerStyle={{ flex: 1, width: '100%' }}
-                        contentContainerStyle={{ paddingTop: 24, paddingBottom: insets.bottom + 24, paddingHorizontal: 24 }}
+                        contentContainerStyle={{ paddingTop: 24, paddingHorizontal: 24 }}
                     />
+                    <View w='100%' px={6} pt={3} style={{ paddingBottom: insets.bottom + 16 }}>
+                        <WorkoutBar
+                            trainingId={trainingId}
+                            open={open}
+                            onChange={refresh}
+                            onFinished={sessionId => navigation.navigate('summary', { sessionId })}
+                        />
+                    </View>
                 </>
                 :
                 <>
@@ -167,6 +211,7 @@ export function Exercise({ navigation, route }: ExerciseScreenProps) {
                     title={menuExercise.name}
                     options={[
                         { label: 'Renomear', icon: 'edit', onPress: () => handleRename(menuExercise) },
+                        { label: 'Faixa alvo', icon: 'trending-up', onPress: () => handleTarget(menuExercise) },
                         { label: 'Remover do treino', icon: 'delete', onPress: () => handleExerciseRemove(menuExercise.id) },
                     ]}
                 />
@@ -179,6 +224,17 @@ export function Exercise({ navigation, route }: ExerciseScreenProps) {
                 initialText={renaming?.name}
                 hint={renaming?.hint}
                 title='Exercício'
+            />
+
+            <InputPopup
+                isOpen={targetExercise !== undefined}
+                onClose={() => setTargetExercise(undefined)}
+                onSave={handleSaveTarget}
+                initialText={targetExercise?.target}
+                hint='Repetições por série, como 8-12. Deixe vazio para remover.'
+                title='Faixa alvo'
+                placeholder='8-12'
+                isEditing
             />
         </View>
     );

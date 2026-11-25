@@ -7,6 +7,7 @@ import { RootStackParamList } from './routeTypes';
 import { Training } from "@screens/Training";
 import { Exercise } from "@screens/Exercise";
 import { Series } from "@screens/Series";
+import { Summary } from "@screens/Summary";
 
 const { Navigator, Screen } = createNativeStackNavigator<RootStackParamList>();
 
@@ -26,6 +27,11 @@ export function AppRoutes() {
             <Screen 
                 name = 'series'
                 component={Series}
+            />
+
+            <Screen 
+                name = 'summary'
+                component={Summary}
             />
         </Navigator>
     )

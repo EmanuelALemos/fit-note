@@ -12,7 +12,7 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 | 2 | SQLite, repositório, migração, importação e exportação | Concluída e testada no Expo Go |
 | 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Primeiro build instalado e em uso; verificações do keystore pendentes (seção 9) |
 | 3 | Renomear e reordenar | Concluída e testada no Expo Go |
-| 4 | Sessões | Não iniciada |
+| 4 | Sessões | Implementada; aguardando teste no celular |
 | 5 | Timer de descanso | Não iniciada |
 | 6 | Histórico com gráficos | Não iniciada |
 
@@ -190,7 +190,7 @@ Seção 9. PR pequeno, só de configuração, quando a Etapa 2 estiver pronta. A
 - Drag & drop com alça ⋮⋮ para exercícios (por treino) e treinos. Requer `GestureHandlerRootView` em `App.tsx`.
 - Card de treino: editar/excluir no menu ⋯; mostra "N exercícios · último: dia/data". Sem sessão real (antes da Etapa 4), mostra só "N exercícios".
 
-Implementação: `react-native-draggable-flatlist` (só JavaScript, usa os nativos já instalados); segurar a alça ⋮⋮ e arrastar. A ordem é recusada se a lista não bater com a do banco. Branch criada a partir da 2b, ainda não mesclada.
+Implementação: `react-native-draggable-flatlist` (só JavaScript, usa os nativos já instalados); segurar a alça ⋮⋮ e arrastar. A ordem é recusada se a lista não bater com a do banco. Branch criada a partir da 2b; as duas já mescladas.
 
 **Ocorrência a observar:** no teste, ao levar um exercício do fim ao topo, algumas vezes os cards ficaram colados ou sobrepostos. Não se repetiu ao testar de novo e a causa não foi confirmada; Emanuel considerou um incidente pontual. Se voltar, suspeitar de `CellRendererComponent` (`heldTranslate` só zera no `onLayout`) e de `useCellTranslate` (cards fora da área visível ficam sem deslocamento), ambos da biblioteca.
 
@@ -203,6 +203,17 @@ Implementação: `react-native-draggable-flatlist` (só JavaScript, usa os nativ
 - Card na lista: "Última: 22 kg · 10/8/7".
 - Resumo ao finalizar: duração, séries, volume, repetições, recordes do dia e comparação com a sessão anterior do mesmo treino.
 - Sessão aberta sobrevive ao app fechado.
+
+Implementação (`src/database/workouts.ts`, esquema versão 2):
+
+- **Versão 2 do banco:** não muda tabelas; só finaliza as sessões importadas abertas, que viram histórico. Backups da versão 1 recebem o mesmo tratamento. Um app anterior não abre o banco depois disso.
+- **Sugestão:** as séries de hoje vêm preenchidas com a última vez; um ✓ basta quando foi igual. Nada é gravado até o ✓ ou, com treino aberto, até a primeira alteração.
+- **Sem treino aberto:** +/− de repetições e carga por série valem só na tela. A quantidade de séries fica em `default_sets` e vale até o próximo treino com o exercício.
+- **Finalizar:** guarda só as séries com ✓. Sem nenhuma, o treino não é guardado. O encerramento automático segue a mesma regra e não mostra resumo.
+- **Outro treino aberto:** o ✓ entra nele; nunca há dois. Treino em andamento não pode ser excluído.
+- **Carga:** mudar a do exercício não altera séries concluídas nem com carga própria. Tocar no número da série muda só a dela, e isso não passa para o treino seguinte.
+- **"Última carga":** a mais usada nas séries. **Recorde:** maior carga ou, na mesma carga, mais repetições; a primeira marca não conta.
+- **Faixa alvo:** menu ⋯ do exercício, opcional.
 
 ### Etapa 5: timer de descanso
 
@@ -234,8 +245,8 @@ Perguntar antes de implementar a parte afetada.
 |---|---|---|---|
 | 1 | O ✓ inicia o timer automaticamente ou só pelo botão? (A descrição da Etapa 5 diz que começa no ✓) | 5 | |
 | 2 | ±15s vira o novo padrão do exercício ou vale só para aquele descanso? | 5 | |
-| 3 | Tela de séries sem sessão: só leitura com convite, ou a primeira série inicia a sessão? | 4 | |
-| 4 | Carga única por exercício, com edição opcional por série? | 4 | |
+| 3 | Tela de séries sem sessão: só leitura com convite, ou a primeira série inicia a sessão? | 4 | **A primeira série concluída (✓) inicia o treino.** Sem nenhum ✓ por 3 horas, é encerrado no horário da última série. Dá para descartar um treino iniciado por engano |
+| 4 | Carga única por exercício, com edição opcional por série? | 4 | **Sim.** A carga da série só aparece na linha quando difere da do exercício |
 | 5 | Incluir na Etapa 1 a exportação de segurança? | 1 | **Sim**, no primeiro commit |
 | 6 | Incluir na Etapa 1 os itens 13 a 17? (O 13 é necessário para o 9) | 1 | **Sim** |
 | 7 | Normalização ignora acentos ("maquina" = "máquina")? | 2 | **Sim**, só para detectar duplicatas; o nome exibido não muda |

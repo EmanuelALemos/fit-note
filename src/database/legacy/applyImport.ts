@@ -28,13 +28,13 @@ export function applyImport(db: Database, plan: ImportPlan, now = new Date()) {
         let sessions = 0;
         let sets = 0;
 
-        function insertSession(exerciseId: number, mark: LegacyExercise, startedAt: string, finishedAt: string | null) {
+        function insertSession(exerciseId: number, mark: LegacyExercise, at: string) {
             if (mark.repetitions.length === 0) {
                 return;
             }
 
             const sessionId = db.run(
-                "INSERT INTO session (kind, started_at, finished_at) VALUES ('imported', ?, ?)", [startedAt, finishedAt]
+                "INSERT INTO session (kind, started_at, finished_at) VALUES ('imported', ?, ?)", [at, at]
             );
             sessions++;
 
@@ -42,7 +42,7 @@ export function applyImport(db: Database, plan: ImportPlan, now = new Date()) {
                 db.run(`
                     INSERT INTO set_log (session_id, exercise_id, set_number, load_kg, reps, completed_at)
                     VALUES (?, ?, ?, ?, ?, ?)
-                `, [sessionId, exerciseId, index + 1, mark.loadKg, reps, reps > 0 ? startedAt : null]);
+                `, [sessionId, exerciseId, index + 1, mark.loadKg, reps, reps > 0 ? at : null]);
                 sets++;
             });
         }
@@ -55,9 +55,9 @@ export function applyImport(db: Database, plan: ImportPlan, now = new Date()) {
             previous.forEach((mark, index) => {
                 // Antes da atual, para a "última vez" continuar sendo a maior carga.
                 const at = new Date(now.getTime() - (previous.length - index) * 1000).toISOString();
-                insertSession(exerciseId, mark, at, at);
+                insertSession(exerciseId, mark, at);
             });
-            insertSession(exerciseId, current, currentAt, null);
+            insertSession(exerciseId, current, currentAt);
 
             return exerciseId;
         });

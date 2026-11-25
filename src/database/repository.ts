@@ -3,6 +3,7 @@ import { AppError } from '@utils/AppError';
 import { Database } from './Database';
 import { normalizeName } from './normalizeName';
 import { isDatabaseEmpty } from './schema';
+import { createWorkouts } from './workouts';
 
 export interface Training {
     id: number;
@@ -11,16 +12,12 @@ export interface Training {
 
 export interface TrainingSummary extends Training {
     exerciseCount: number;
+    lastWorkoutAt: string | null;
 }
 
 export interface Exercise {
     id: number;
     name: string;
-}
-
-export interface ExerciseDetails extends Exercise {
-    loadKg: number;
-    repetitions: number[]; // uma posição por série
 }
 
 export type Repository = ReturnType<typeof createRepository>;
@@ -33,8 +30,9 @@ function requireSameItems(saved: { id: number }[], ids: number[]) {
     }
 }
 
-export function createRepository(db: Database) {
-    const now = () => new Date().toISOString();
+export function createRepository(db: Database, clock = () => new Date()) {
+    const now = () => clock().toISOString();
+    const workouts = createWorkouts(db, clock);
 
     function requireTraining(id: number) {
         if (!db.get('SELECT 1 FROM training WHERE id = ?', [id])) {
@@ -49,40 +47,23 @@ export function createRepository(db: Database) {
     }
 
     function requireExercise(id: number) {
-        const exercise = db.get<{ id: number; name: string; loadKg: number }>(
-            'SELECT id, name, current_load_kg AS loadKg FROM exercise WHERE id = ?', [id]
-        );
+        const exercise = db.get('SELECT 1 FROM exercise WHERE id = ?', [id]);
 
         if (!exercise) {
             throw new AppError('Exercício não encontrado.');
         }
-
-        return exercise;
-    }
-
-    // Sessão importada ainda aberta: guarda as séries atuais do exercício até a Etapa 4.
-    function currentSessionId(exerciseId: number): number | null {
-        return db.get<{ id: number }>(`
-            SELECT s.id FROM session s
-            WHERE s.kind = 'imported' AND s.finished_at IS NULL
-              AND EXISTS (SELECT 1 FROM set_log l WHERE l.session_id = s.id AND l.exercise_id = ?)
-            ORDER BY s.id DESC LIMIT 1
-        `, [exerciseId])?.id ?? null;
-    }
-
-    function lastSetNumber(sessionId: number, exerciseId: number): number {
-        return db.get<{ last: number | null }>(
-            'SELECT MAX(set_number) AS last FROM set_log WHERE session_id = ? AND exercise_id = ?',
-            [sessionId, exerciseId]
-        )?.last ?? 0;
     }
 
     return {
+        workouts,
+
         isEmpty: () => isDatabaseEmpty(db),
 
         listTrainings: () => db.all<TrainingSummary>(`
             SELECT id, name,
-                (SELECT COUNT(*) FROM training_exercise WHERE training_id = training.id) AS exerciseCount
+                (SELECT COUNT(*) FROM training_exercise WHERE training_id = training.id) AS exerciseCount,
+                (SELECT MAX(started_at) FROM session WHERE training_id = training.id
+                    AND kind = 'workout' AND finished_at IS NOT NULL) AS lastWorkoutAt
             FROM training ORDER BY position, id
         `),
 
@@ -113,6 +94,10 @@ export function createRepository(db: Database) {
 
         // Exercícios, cargas e sessões são compartilhados e continuam salvos.
         removeTraining(id: number) {
+            if (workouts.getOpen()?.trainingId === id) {
+                throw new AppError('Este treino está em andamento. Finalize ou descarte antes de excluir.');
+            }
+
             db.run('DELETE FROM training WHERE id = ?', [id]);
         },
 
@@ -189,83 +174,6 @@ export function createRepository(db: Database) {
 
         removeExercise(trainingId: number, exerciseId: number) {
             db.run('DELETE FROM training_exercise WHERE training_id = ? AND exercise_id = ?', [trainingId, exerciseId]);
-        },
-
-        getExercise(id: number): ExerciseDetails {
-            const exercise = requireExercise(id);
-            const sessionId = currentSessionId(id);
-            const sets = sessionId === null ? [] : db.all<{ reps: number }>(
-                'SELECT reps FROM set_log WHERE session_id = ? AND exercise_id = ? ORDER BY set_number', [sessionId, id]
-            );
-
-            return { ...exercise, repetitions: sets.map(set => set.reps) };
-        },
-
-        setLoad(exerciseId: number, loadKg: number) {
-            db.transaction(() => {
-                requireExercise(exerciseId);
-                db.run('UPDATE exercise SET current_load_kg = ? WHERE id = ?', [loadKg, exerciseId]);
-
-                const sessionId = currentSessionId(exerciseId);
-                if (sessionId !== null) {
-                    db.run(
-                        'UPDATE set_log SET load_kg = ? WHERE session_id = ? AND exercise_id = ?',
-                        [loadKg, sessionId, exerciseId]
-                    );
-                }
-            });
-        },
-
-        addSet(exerciseId: number) {
-            db.transaction(() => {
-                const { loadKg } = requireExercise(exerciseId);
-                const sessionId = currentSessionId(exerciseId) ?? db.run(
-                    "INSERT INTO session (kind, started_at) VALUES ('imported', ?)", [now()]
-                );
-
-                db.run(
-                    'INSERT INTO set_log (session_id, exercise_id, set_number, load_kg, reps) VALUES (?, ?, ?, ?, 0)',
-                    [sessionId, exerciseId, lastSetNumber(sessionId, exerciseId) + 1, loadKg]
-                );
-            });
-        },
-
-        removeLastSet(exerciseId: number) {
-            db.transaction(() => {
-                const sessionId = currentSessionId(exerciseId);
-                if (sessionId === null) {
-                    return;
-                }
-
-                db.run(
-                    'DELETE FROM set_log WHERE session_id = ? AND exercise_id = ? AND set_number = ?',
-                    [sessionId, exerciseId, lastSetNumber(sessionId, exerciseId)]
-                );
-                db.run(
-                    'DELETE FROM session WHERE id = ? AND NOT EXISTS (SELECT 1 FROM set_log WHERE session_id = ?)',
-                    [sessionId, sessionId]
-                );
-            });
-        },
-
-        changeRepetitions(exerciseId: number, setNumber: number, delta: number) {
-            db.transaction(() => {
-                const sessionId = currentSessionId(exerciseId);
-                const set = sessionId === null ? null : db.get<{ id: number; reps: number }>(
-                    'SELECT id, reps FROM set_log WHERE session_id = ? AND exercise_id = ? AND set_number = ?',
-                    [sessionId, exerciseId, setNumber]
-                );
-
-                if (!set) {
-                    throw new AppError('Série não encontrada.');
-                }
-
-                const reps = Math.max(0, set.reps + delta);
-                db.run(
-                    'UPDATE set_log SET reps = ?, completed_at = ? WHERE id = ?',
-                    [reps, reps > 0 ? now() : null, set.id]
-                );
-            });
         },
     };
 }

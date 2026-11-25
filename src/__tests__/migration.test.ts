@@ -29,6 +29,11 @@ const dump = (target: Database) => Object.fromEntries(TABLES.map(table => [table
 // Tudo menos horários, que dependem do instante da execução.
 const content = (target: Database) => JSON.stringify(dump(target)).replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, 'T');
 
+const mark = (source: Repository, id: number) => {
+    const { name, loadKg, last } = source.workouts.getExercise(id);
+    return { name, loadKg, repetitions: last?.sets.map(set => set.reps) ?? [] };
+};
+
 const trainings = [
     { name: 'Upper B', exercicies: ['Remada', 'Supino'] },
     { name: 'Upper A', exercicies: ['Supino', null, 'Remada', 'Elevação'] },
@@ -57,7 +62,7 @@ test('migra treinos, ordem, cargas e séries', async () => {
 
     const items = repository.listExercises(upperA.id);
     expect(items.map(item => item.name)).toEqual(['Supino', 'Remada', 'Elevação']);
-    expect(items.map(item => repository.getExercise(item.id)).map(({ loadKg, repetitions }) => [loadKg, repetitions])).toEqual([
+    expect(items.map(item => mark(repository, item.id)).map(({ loadKg, repetitions }) => [loadKg, repetitions])).toEqual([
         [22.5, [10, 8, 7]], [40, [12, 0]], [8, []],
     ]);
 
@@ -142,7 +147,7 @@ test('treino que cita exercício inexistente ignora só o vínculo', async () =>
 test('valores inválidos viram 0', async () => {
     await store([{ name: 'A', exercicies: ['X', 'Y'] }], [exercise('X', null, [-2, 1.5, 4]), exercise('Y', -3, [])]);
     await migrateAsyncStorage(db);
-    const [x, y] = repository.listExercises(repository.listTrainings()[0].id).map(item => repository.getExercise(item.id));
+    const [x, y] = repository.listExercises(repository.listTrainings()[0].id).map(item => mark(repository, item.id));
     expect(x).toMatchObject({ loadKg: 0, repetitions: [0, 0, 4] });
     expect(y).toMatchObject({ loadKg: 0, repetitions: [] });
 });
@@ -158,19 +163,13 @@ test('duplicatas: maior carga fica atual e a outra vira sessão importada anteri
     const [item] = repository.listExercises(a.id);
     expect(repository.listExercises(a.id)).toHaveLength(1);
     expect(repository.listExercises(b.id)).toEqual([item]);
-    expect(repository.getExercise(item.id)).toEqual({ id: item.id, name: 'Supino', loadKg: 30, repetitions: [8, 8] });
+    expect(mark(repository, item.id)).toEqual({ name: 'Supino', loadKg: 30, repetitions: [8, 8] });
 
     const sessions = db.all<{ load: number; open: number }>(`
         SELECT MAX(l.load_kg) AS load, s.finished_at IS NULL AS open
         FROM session s JOIN set_log l ON l.session_id = s.id GROUP BY s.id ORDER BY s.started_at
     `);
-    expect(sessions).toEqual([{ load: 20, open: 0 }, { load: 25, open: 0 }, { load: 30, open: 1 }]);
-
-    // Esvaziar a marca atual não traz a anterior de volta para a tela.
-    repository.removeLastSet(item.id);
-    repository.removeLastSet(item.id);
-    expect(repository.getExercise(item.id).repetitions).toEqual([]);
-    expect(db.all('SELECT id FROM session')).toHaveLength(2);
+    expect(sessions).toEqual([{ load: 20, open: 0 }, { load: 25, open: 0 }, { load: 30, open: 0 }]);
 });
 
 test('arquivo importado e AsyncStorage geram o mesmo banco', async () => {
@@ -198,7 +197,7 @@ test('arquivo importado e AsyncStorage geram o mesmo banco', async () => {
 test('exportar e reimportar em banco vazio reproduz o mesmo banco', async () => {
     await store(trainings, exercises);
     await migrateAsyncStorage(db);
-    repository.setLoad(repository.listExercises(1)[0].id, 41.25);
+    repository.workouts.setLoad(repository.listExercises(1)[0].id, 41.25);
 
     const other = createMemoryDatabase();
     const prepared = prepareImport(JSON.stringify(buildBackup(db)));

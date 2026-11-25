@@ -7,13 +7,14 @@ import { AntDesign } from "@expo/vector-icons"
 
 interface SerieHeaderCardProps {
     series: number;
+    minimum: number;
     onAddSerie: () => void;
     onRemoveSerie: () => void;
 }
 
-export function SerieHeaderCard({ series, onAddSerie, onRemoveSerie }: SerieHeaderCardProps) {
+export function SerieHeaderCard({ series, minimum, onAddSerie, onRemoveSerie }: SerieHeaderCardProps) {
     return (
-        <View flexDirection='row' bg='#525252' mb={6} w='100%' h={'20'} borderRadius={14} alignItems='center' justifyContent='space-between' p={4}>
+        <View flexDirection='row' bg='#525252' mb={4} w='100%' h={16} borderRadius={14} alignItems='center' justifyContent='space-between' p={4}>
             <Text fontFamily={'Poppins_600SemiBold'} fontSize={24} color='white'  allowFontScaling={false} >
                 SÉRIES
             </Text>
@@ -22,9 +23,9 @@ export function SerieHeaderCard({ series, onAddSerie, onRemoveSerie }: SerieHead
             <View flexDirection='row'>
                 <TouchableOpacity
                     onPress={onRemoveSerie}
-                    disabled={series <= 0}
+                    disabled={series <= minimum}
                 >
-                    <AntDesign name="minussquare" size={32} color={series <= 0 ? '#404040' : '#D9F99D'} />
+                    <AntDesign name="minussquare" size={32} color={series <= minimum ? '#404040' : '#D9F99D'} />
                 </TouchableOpacity>
 
                 <Text
