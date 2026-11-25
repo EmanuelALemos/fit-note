@@ -11,7 +11,7 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 | 1 | Correções sem mudar o modelo | Concluída e testada no Expo Go |
 | 2 | SQLite, repositório, migração, importação e exportação | Concluída e testada no Expo Go |
 | 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Primeiro build instalado e em uso; verificações do keystore pendentes (seção 9) |
-| 3 | Renomear e reordenar | Não iniciada |
+| 3 | Renomear e reordenar | Implementada; aguardando teste no celular |
 | 4 | Sessões | Não iniciada |
 | 5 | Timer de descanso | Não iniciada |
 | 6 | Histórico com gráficos | Não iniciada |
@@ -189,6 +189,8 @@ Seção 9. PR pequeno, só de configuração, quando a Etapa 2 estiver pronta. A
 - Menu ⋯ no card de exercício, com Renomear (modal igual ao `InputPopup`) avisando "está em N treinos; o nome muda em todos". Nome já existente é recusado.
 - Drag & drop com alça ⋮⋮ para exercícios (por treino) e treinos. Requer `GestureHandlerRootView` em `App.tsx`.
 - Card de treino: editar/excluir no menu ⋯; mostra "N exercícios · último: dia/data". Sem sessão real (antes da Etapa 4), mostra só "N exercícios".
+
+Implementação: `react-native-draggable-flatlist` (só JavaScript, usa os nativos já instalados); segurar a alça ⋮⋮ e arrastar. A ordem é recusada se a lista não bater com a do banco. Branch criada a partir da 2b, ainda não mesclada.
 
 ### Etapa 4: sessões
 

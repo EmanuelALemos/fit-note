@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { View, Image } from 'native-base';
-import { Alert, FlatList } from 'react-native';
+import { Alert } from 'react-native';
+import DraggableFlatList from 'react-native-draggable-flatlist';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,12 +10,13 @@ import BackgroundImage from '@assets/padrões.png';
 import { BackupButton } from '@components/BackupButton';
 import { ButtonAdd } from '@components/ButtonAdd';
 import { Card } from '@components/Card';
+import { CardMenu } from '@components/CardMenu';
 import { Header } from '@components/Header';
 import { ImportButton } from '@components/ImportButton';
 import { InputPopup } from '@components/InputPopup';
 
 import { useDatabase } from '@database/DatabaseProvider';
-import { Training as TrainingItem } from '@database/repository';
+import { TrainingSummary } from '@database/repository';
 
 import { TrainingScreenProps } from '@routes/routeTypes';
 import { AppError } from '@utils/AppError';
@@ -26,7 +28,8 @@ export function Training({ navigation }: TrainingScreenProps) {
     const [trainings, setTrainings] = useState(() => repository.listTrainings());
     const [canImport, setCanImport] = useState(() => repository.isEmpty());
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingTraining, setEditingTraining] = useState<TrainingItem | undefined>(undefined);
+    const [editingTraining, setEditingTraining] = useState<TrainingSummary | undefined>(undefined);
+    const [menuTraining, setMenuTraining] = useState<TrainingSummary | undefined>(undefined);
 
     function refresh() {
         try {
@@ -43,7 +46,7 @@ export function Training({ navigation }: TrainingScreenProps) {
         setModalOpen(true);
     }
 
-    function handleEditTraining(training: TrainingItem) {
+    function handleEditTraining(training: TrainingSummary) {
         setEditingTraining(training);
         setModalOpen(true);
     }
@@ -92,6 +95,18 @@ export function Training({ navigation }: TrainingScreenProps) {
         );
     }
 
+    function handleReorder(reordered: TrainingSummary[]) {
+        setTrainings(reordered);
+
+        try {
+            repository.reorderTrainings(reordered.map(item => item.id));
+        } catch (error) {
+            console.log(error);
+            refresh();
+            Alert.alert('Erro', error instanceof AppError ? error.message : 'Não foi possível salvar a ordem.');
+        }
+    }
+
     useFocusEffect(useCallback(() => {
         refresh();
     }, []));
@@ -112,14 +127,16 @@ export function Training({ navigation }: TrainingScreenProps) {
             {trainings.length !== 0 ?
                 <>
                     <Header title='TREINOS' onAddPress={handleAddNewTraining} />
-                    <FlatList
+                    <DraggableFlatList
                         data={trainings}
                         keyExtractor={item => String(item.id)}
-                        renderItem={({ item }) => (
+                        renderItem={({ item, drag, isActive }) => (
                             <Card
                                 name={item.name}
-                                onPressTrash={() => handleTrainingRemove(item.id)}
-                                onPressEdit={() => handleEditTraining(item)}
+                                details={`${item.exerciseCount} ${item.exerciseCount === 1 ? 'exercício' : 'exercícios'}`}
+                                onPressMenu={() => setMenuTraining(item)}
+                                onDrag={drag}
+                                isDragging={isActive}
                                 onPressNavigate={() => navigation.navigate('exercise', {
                                     trainingId: item.id,
                                     trainingName: item.name,
@@ -127,7 +144,8 @@ export function Training({ navigation }: TrainingScreenProps) {
                             />
                         )}
                         showsVerticalScrollIndicator={false}
-                        style={{ flex: 1, width: '100%' }}
+                        onDragEnd={({ from, to, data }) => from !== to && handleReorder(data)}
+                        containerStyle={{ flex: 1, width: '100%' }}
                         contentContainerStyle={{ paddingTop: 24, paddingBottom: insets.bottom + 24, paddingHorizontal: 24 }}
                     />
                 </>
@@ -139,6 +157,18 @@ export function Training({ navigation }: TrainingScreenProps) {
             }
 
             <BackupButton />
+
+            {menuTraining &&
+                <CardMenu
+                    isOpen
+                    onClose={() => setMenuTraining(undefined)}
+                    title={menuTraining.name}
+                    options={[
+                        { label: 'Renomear', icon: 'edit', onPress: () => handleEditTraining(menuTraining) },
+                        { label: 'Excluir', icon: 'delete', onPress: () => handleTrainingRemove(menuTraining.id) },
+                    ]}
+                />
+            }
 
             <InputPopup
                 isOpen={modalOpen}

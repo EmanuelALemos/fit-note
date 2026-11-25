@@ -108,3 +108,53 @@ test('esquema: reabrir não altera nada e versão mais nova é recusada', () => 
     db.exec('PRAGMA user_version = 99');
     expect(() => prepareSchema(db)).toThrow(AppError);
 });
+
+test('renomear exercício vale em todos os treinos e mantém os dados', () => {
+    const upperB = repository.createTraining('Upper B');
+    repository.addExercise(upperB, 'Supino');
+    repository.setLoad(supino, 40);
+    repository.addSet(supino);
+    expect(repository.countTrainingsWithExercise(supino)).toBe(2);
+    repository.renameExercise(supino, 'Supino reto');
+    expect(repository.listExercises(upperA)).toEqual([{ id: supino, name: 'Supino reto' }]);
+    expect(repository.listExercises(upperB)).toEqual([{ id: supino, name: 'Supino reto' }]);
+    expect(repository.getExercise(supino)).toMatchObject({ loadKg: 40, repetitions: [0] });
+    expect(repository.addExercise(repository.createTraining('C'), 'SUPINO RETO')).toBe(supino);
+});
+
+test('renomear recusa nome de outro exercício, mas aceita corrigir o próprio', () => {
+    repository.addExercise(upperA, 'Remada');
+    expect(() => repository.renameExercise(supino, ' REMADA ')).toThrow('Já existe um exercício chamado Remada.');
+    repository.renameExercise(supino, 'SUPÍNO');
+    expect(repository.getExercise(supino).name).toBe('SUPÍNO');
+    expect(() => repository.renameExercise(999, 'X')).toThrow(AppError);
+});
+
+test('ordem dos exercícios é salva por treino, e novos entram no fim', () => {
+    const remada = repository.addExercise(upperA, 'Remada');
+    const upperB = repository.createTraining('Upper B');
+    repository.addExercise(upperB, 'Supino');
+    repository.addExercise(upperB, 'Remada');
+    repository.reorderExercises(upperA, [remada, supino]);
+    const rosca = repository.addExercise(upperA, 'Rosca');
+    expect(repository.listExercises(upperA).map(item => item.id)).toEqual([remada, supino, rosca]);
+    expect(repository.listExercises(upperB).map(item => item.id)).toEqual([supino, remada]);
+});
+
+test('ordem dos treinos é salva, com a contagem de exercícios', () => {
+    const upperB = repository.createTraining('Upper B');
+    repository.reorderTrainings([upperB, upperA]);
+    expect(repository.listTrainings()).toEqual([
+        { id: upperB, name: 'Upper B', exerciseCount: 0 },
+        { id: upperA, name: 'Upper A', exerciseCount: 1 },
+    ]);
+});
+
+test('ordem incompleta, repetida ou com item estranho é recusada', () => {
+    const remada = repository.addExercise(upperA, 'Remada');
+    for (const ids of [[supino], [supino, supino], [supino, 999], [remada, supino, 999]]) {
+        expect(() => repository.reorderExercises(upperA, ids)).toThrow(AppError);
+    }
+    expect(() => repository.reorderTrainings([])).toThrow(AppError);
+    expect(repository.listExercises(upperA).map(item => item.id)).toEqual([supino, remada]);
+});

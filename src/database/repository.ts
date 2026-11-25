@@ -9,6 +9,10 @@ export interface Training {
     name: string;
 }
 
+export interface TrainingSummary extends Training {
+    exerciseCount: number;
+}
+
 export interface Exercise {
     id: number;
     name: string;
@@ -20,6 +24,14 @@ export interface ExerciseDetails extends Exercise {
 }
 
 export type Repository = ReturnType<typeof createRepository>;
+
+function requireSameItems(saved: { id: number }[], ids: number[]) {
+    const unique = new Set(ids);
+
+    if (unique.size !== ids.length || saved.length !== ids.length || saved.some(item => !unique.has(item.id))) {
+        throw new AppError('A lista mudou. Tente reordenar novamente.');
+    }
+}
 
 export function createRepository(db: Database) {
     const now = () => new Date().toISOString();
@@ -68,7 +80,11 @@ export function createRepository(db: Database) {
     return {
         isEmpty: () => isDatabaseEmpty(db),
 
-        listTrainings: () => db.all<Training>('SELECT id, name FROM training ORDER BY position, id'),
+        listTrainings: () => db.all<TrainingSummary>(`
+            SELECT id, name,
+                (SELECT COUNT(*) FROM training_exercise WHERE training_id = training.id) AS exerciseCount
+            FROM training ORDER BY position, id
+        `),
 
         createTraining(name: string): number {
             return db.transaction(() => {
@@ -85,6 +101,13 @@ export function createRepository(db: Database) {
                 requireTraining(id);
                 requireFreeTrainingName(name, id);
                 db.run('UPDATE training SET name = ? WHERE id = ?', [name, id]);
+            });
+        },
+
+        reorderTrainings(ids: number[]) {
+            db.transaction(() => {
+                requireSameItems(db.all<{ id: number }>('SELECT id FROM training'), ids);
+                ids.forEach((id, position) => db.run('UPDATE training SET position = ? WHERE id = ?', [position, id]));
             });
         },
 
@@ -127,6 +150,40 @@ export function createRepository(db: Database) {
                 `, [trainingId, exerciseId, trainingId]);
 
                 return exerciseId;
+            });
+        },
+
+        countTrainingsWithExercise: (exerciseId: number) => db.get<{ total: number }>(
+            'SELECT COUNT(*) AS total FROM training_exercise WHERE exercise_id = ?', [exerciseId]
+        )!.total,
+
+        // O exercício é único: o nome muda em todos os treinos.
+        renameExercise(id: number, name: string) {
+            db.transaction(() => {
+                requireExercise(id);
+
+                const normalized = normalizeName(name);
+                const other = db.get<Exercise>(
+                    'SELECT id, name FROM exercise WHERE name_normalized = ? AND id <> ?', [normalized, id]
+                );
+
+                if (other) {
+                    throw new AppError(`Já existe um exercício chamado ${other.name}.`);
+                }
+
+                db.run('UPDATE exercise SET name = ?, name_normalized = ? WHERE id = ?', [name, normalized, id]);
+            });
+        },
+
+        reorderExercises(trainingId: number, ids: number[]) {
+            db.transaction(() => {
+                requireSameItems(db.all<{ id: number }>(
+                    'SELECT exercise_id AS id FROM training_exercise WHERE training_id = ?', [trainingId]
+                ), ids);
+                ids.forEach((id, position) => db.run(
+                    'UPDATE training_exercise SET position = ? WHERE training_id = ? AND exercise_id = ?',
+                    [position, trainingId, id]
+                ));
             });
         },
 
