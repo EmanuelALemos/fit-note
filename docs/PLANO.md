@@ -9,8 +9,8 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 | Etapa | Conteúdo | Estado |
 |---|---|---|
 | 1 | Correções sem mudar o modelo | Concluída e testada no Expo Go |
-| 2 | SQLite, repositório, migração, importação e exportação | Implementada; aguardando teste no celular |
-| 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Aprovada; após a Etapa 2 |
+| 2 | SQLite, repositório, migração, importação e exportação | Concluída e testada no Expo Go |
+| 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Próxima |
 | 3 | Renomear e reordenar | Não iniciada |
 | 4 | Sessões | Não iniciada |
 | 5 | Timer de descanso | Não iniciada |
@@ -178,7 +178,7 @@ Mesmo comportamento visível, mais a importação (seção 10). Aceite: testes d
 
 O botão de backup lê o AsyncStorage e deixaria de exportar dados atuais quando o SQLite entrar. Nesta etapa ele passa a exportar o SQLite inteiro (formato `version: 2`) e a importação aceita os formatos 1 e 2. Exportar e reimportar em banco vazio deve reproduzir o mesmo banco (teste).
 
-Verificado sem celular: `tsc`, testes automáticos, migração com a lista real e geração do bundle Android. SQLite nativo, seletor de arquivos e compartilhamento dependem do teste no aparelho.
+Verificado sem celular: `tsc`, testes automáticos, migração com a lista real e geração do bundle Android. Emanuel testou no celular (Expo Go): tudo passou e os dados importados são iguais aos do app antigo.
 
 ### Etapa 2b: identidade e primeiro build do app novo
 
