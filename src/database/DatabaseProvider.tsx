@@ -36,7 +36,12 @@ async function open(): Promise<DatabaseContextValue> {
     await migrateAsyncStorage(db);
 
     const repository = createRepository(db);
-    syncRestNotification(repository.workouts.rest.get()); // aviso igual ao descanso gravado
+    // Fechar o app à força cancela o aviso agendado: reagenda o descanso em andamento.
+    // Se já terminou, não faz nada (nem apaga um aviso já mostrado).
+    const rest = repository.workouts.rest.get();
+    if (rest) {
+        syncRestNotification(rest);
+    }
 
     return { db, repository };
 }

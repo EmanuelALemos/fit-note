@@ -11,9 +11,10 @@ interface HeaderProps {
     title?: string;
     subtitle?: string;
     status?: string;
+    onTitlePress?: () => void;
 }
 
-export function Header({ onBackPress, onAddPress, title, subtitle, status }: HeaderProps) {
+export function Header({ onBackPress, onAddPress, title, subtitle, status, onTitlePress }: HeaderProps) {
     const insets = useSafeAreaInsets();
 
     return (
@@ -29,6 +30,9 @@ export function Header({ onBackPress, onAddPress, title, subtitle, status }: Hea
             <View flex={1} alignItems={'center'} px={2}>
                 {title && (
                     <Text
+                        onPress={onTitlePress}
+                        accessibilityRole={onTitlePress ? 'button' : 'header'}
+                        accessibilityHint={onTitlePress ? 'Abre o histórico' : undefined}
                         color='white'
                         fontSize={32}
                         fontFamily={'Poppins_600SemiBold'}
