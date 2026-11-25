@@ -233,6 +233,8 @@ Implementação (`src/database/rest.ts`, `restNotification.ts`):
 - **Precisão com a tela bloqueada:** o `expo-notifications` só agenda exato com a permissão "Alarmes e lembretes" (`SCHEDULE_EXACT_ALARM`, declarada no `app.json`). No Android 12 e 13 ela vem concedida; no 14+ precisa ser ativada em Configurações › Apps › Fit Note. Sem ela, o aviso pode atrasar.
 - Exige novo build (módulo nativo e permissão). No Expo Go, o aviso usa as permissões do próprio Expo Go.
 
+Testado no Expo Go (adb): ✓ inicia o descanso; ±15s e Pular; desmarcar cancela só o descanso daquela série; novo ✓ reinicia; status na lista de exercícios; padrão editável; aviso "Fim do descanso" publicado com o app em segundo plano. Falta o teste com a tela bloqueada, no build.
+
 ### Etapa 6: histórico com gráficos
 
 - Abre ao tocar no nome do exercício na tela de séries.
