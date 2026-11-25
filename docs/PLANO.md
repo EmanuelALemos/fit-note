@@ -9,8 +9,8 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 | Etapa | Conteúdo | Estado |
 |---|---|---|
 | 1 | Correções sem mudar o modelo | Implementada; aguardando teste no celular |
-| 1b | App novo: identidade, conta e keystore (seção 9) | Aguardando aprovação |
-| 2 | SQLite, repositório, migração e importação | Não iniciada |
+| 2 | SQLite, repositório, migração, importação e exportação | Não iniciada |
+| 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Aprovada; após a Etapa 2 |
 | 3 | Renomear e reordenar | Não iniciada |
 | 4 | Sessões | Não iniciada |
 | 5 | Timer de descanso | Não iniciada |
@@ -86,7 +86,7 @@ Itens 13 a 17 aprovados e incluídos na Etapa 1.
 ## 5. Riscos
 
 1. **O Expo Go não enxerga os dados reais.** O uso diário é no APK, que tem armazenamento separado.
-2. **O APK antigo não pode ser atualizado.** O acesso à conta Expo `emanuel_alemos` foi perdido e, com ela, a chave de assinatura. Verificado neste computador: não há sessão do EAS, e uma busca na pasta do usuário (sem AppData, até 5 níveis) não achou o keystore. A versão nova será um app separado, instalado ao lado do antigo.
+2. **O APK antigo não pode ser atualizado.** O acesso à conta Expo `emanuel_alemos` foi perdido e, com ela, a chave de assinatura. Verificado neste computador: não há sessão do EAS, e uma busca na pasta do usuário (sem AppData, até 5 níveis) não achou o keystore. **A conta antiga está descartada: decidido não tentar recuperá-la.** A versão nova será um app separado, instalado ao lado do antigo.
 3. **Os dados reais só saem do app antigo por transcrição** (prints ou lista). Não haverá APK de backup do `f2900e8`. A transcrição pode ter erros, por isso há conferência (seção 10). Exercícios fora de todos os treinos não aparecem em tela nenhuma, mas voltam com carga e séries ao adicionar o nome exato a um treino no app antigo.
 4. **Os dados são o estado atual, não 1 ano de histórico.** Como as cargas são sobrescritas (bug 5), a migração recupera só a última marca de cada exercício. Os gráficos começam a se formar na Etapa 4.
 5. **Expo Go e SDK 51:** a versão da loja costuma suportar só SDKs recentes. O celular precisa do Expo Go compatível com o SDK 51 ou de um build próprio. Notificações da Etapa 5 devem ser validadas em build próprio, com permissão de notificação (Android 13+) e de alarme exato (Android 12+).
@@ -168,15 +168,15 @@ Aceite:
 
 Verificado sem celular: `tsc`, testes automáticos e geração do bundle Android. Layout, teclado e compartilhamento dependem do teste no aparelho.
 
-### Etapa 1b: identidade do app novo
-
-Seção 9. PR pequeno, só de configuração. Precisa da conta Expo nova.
-
 ### Etapa 2: SQLite, repositório, migração, importação e telas atuais adaptadas
 
 Mesmo comportamento visível, mais a importação (seção 10). Aceite: testes da migração verdes, migração validada com o arquivo gerado da lista, conferência com o app antigo e nenhuma tela usando o storage antigo.
 
-**[proposta]** O botão de backup lê o AsyncStorage e deixaria de exportar dados atuais quando o SQLite entrar. Nesta etapa ele passa a exportar o SQLite inteiro (formato `version: 2`) e a importação aceita os formatos 1 e 2. Antecipa o item "exportar/importar backup" que estava fora do escopo.
+O botão de backup lê o AsyncStorage e deixaria de exportar dados atuais quando o SQLite entrar. Nesta etapa ele passa a exportar o SQLite inteiro (formato `version: 2`) e a importação aceita os formatos 1 e 2. Exportar e reimportar em banco vazio deve reproduzir o mesmo banco (teste).
+
+### Etapa 2b: identidade e primeiro build do app novo
+
+Seção 9. PR pequeno, só de configuração, quando a Etapa 2 estiver pronta. Até lá, todos os testes são no Expo Go e os dados reais continuam no app antigo.
 
 ### Etapa 3: renomear e reordenar
 
@@ -214,7 +214,7 @@ README (bug 12, tecnologias, roadmap) e limpeza de dependências (19).
 
 ### Depois, fora do escopo
 
-Exportar/importar backup completo em JSON, notas por exercício, substituir exercício só na sessão do dia, atualização do Expo SDK, troca do native-base.
+Notas por exercício, substituir exercício só na sessão do dia, atualização do Expo SDK, troca do native-base.
 
 ## 8. Decisões em aberto
 
@@ -231,15 +231,15 @@ Perguntar antes de implementar a parte afetada.
 | 7 | Normalização ignora acentos ("maquina" = "máquina")? | 2 | **Sim**, só para detectar duplicatas; o nome exibido não muda |
 | 8 | Duplicatas com marcas diferentes: qual vale? Os dados antigos não têm data | 2 | O relatório da lista transcrita **lista as duplicatas e o Emanuel decide caso a caso**. Se forem muitas, vale a regra: maior carga fica como atual e a outra vira sessão importada anterior |
 | 9 | Aprovar os ajustes sugeridos no esquema (seção 6)? | 2 | **Sim** |
-| 10 | Package e nome do app novo (seção 9)? | 1b | |
-| 11 | Formato da lista e importação (seção 10)? | 2 | |
-| 12 | Exportação/importação completa já na Etapa 2? | 2 | |
+| 10 | Package e nome do app novo (seção 9)? | 2b | **`com.emanuellemos.fitnote`, "Fit Note", slug `fit-note`, versão 2.0.0** |
+| 11 | Formato da lista e importação (seção 10)? | 2 | **Aprovados**: só com banco vazio, resumo, confirmação, tudo ou nada |
+| 12 | Exportação/importação completa já na Etapa 2? | 2 | **Sim** |
 
-## 9. App novo: identidade e chave de assinatura [proposta]
+## 9. App novo: identidade e chave de assinatura
 
 Valores em `app.json`:
 
-| Campo | Hoje | Proposta |
+| Campo | Hoje | Novo |
 |---|---|---|
 | `android.package` | `com.emanuel_alemos.FitNote` | `com.emanuellemos.fitnote` |
 | `name` | FitNote | Fit Note |
@@ -260,7 +260,7 @@ Passos do Emanuel (login e chaves não passam pelo Claude nem pelo Git):
 
 No Git: `*.jks` já é ignorado; acrescentar `credentials.json`, `credentials/` e as listas de dados.
 
-## 10. Dados do app antigo: da lista ao app novo [proposta]
+## 10. Dados do app antigo: da lista ao app novo
 
 ### Formato da lista
 
@@ -281,6 +281,8 @@ Supino reto
 - Exercício que se repete em outro treino: só o nome basta.
 - Nome exatamente como aparece no app, inclusive acentos e erros de digitação.
 - Carga com vírgula ou ponto. O app antigo truncava decimais: é a hora de escrever o valor real.
+
+Quem faz: Emanuel passa a pasta com os prints, o Claude escreve a lista e Emanuel confere, principalmente as cargas com decimal. O Claude sinaliza tudo que estiver ilegível ou cortado, sem adivinhar. Emanoela terá uma lista separada. Prints e listas ficam fora do Git.
 
 ### Script no computador
 
