@@ -10,6 +10,7 @@ import { Database } from './Database';
 import { openExpoDatabase } from './expoDatabase';
 import { migrateAsyncStorage } from './legacy/migrateAsyncStorage';
 import { createRepository, Repository } from './repository';
+import { syncRestNotification } from './restNotification';
 import { prepareSchema } from './schema';
 
 interface DatabaseContextValue {
@@ -34,7 +35,10 @@ async function open(): Promise<DatabaseContextValue> {
     prepareSchema(db);
     await migrateAsyncStorage(db);
 
-    return { db, repository: createRepository(db) };
+    const repository = createRepository(db);
+    syncRestNotification(repository.workouts.rest.get()); // aviso igual ao descanso gravado
+
+    return { db, repository };
 }
 
 async function exportRawData() {

@@ -12,8 +12,8 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 | 2 | SQLite, repositório, migração, importação e exportação | Concluída e testada no Expo Go |
 | 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Primeiro build instalado e em uso; verificações do keystore pendentes (seção 9) |
 | 3 | Renomear e reordenar | Concluída e testada no Expo Go |
-| 4 | Sessões | Implementada; aguardando teste no celular |
-| 5 | Timer de descanso | Não iniciada |
+| 4 | Sessões | Concluída e testada no Expo Go |
+| 5 | Timer de descanso | Implementada; aguardando teste no celular |
 | 6 | Histórico com gráficos | Não iniciada |
 
 ## 1. Objetivo do app
@@ -214,6 +214,9 @@ Implementação (`src/database/workouts.ts`, esquema versão 2):
 - **Carga:** mudar a do exercício não altera séries concluídas nem com carga própria. Tocar no número da série muda só a dela, e isso não passa para o treino seguinte.
 - **"Última carga":** a mais usada nas séries. **Recorde:** maior carga ou, na mesma carga, mais repetições; a primeira marca não conta.
 - **Faixa alvo:** menu ⋯ do exercício, opcional.
+- **Séries sugeridas (ajuste pedido no teste):** a quantidade é a planejada do exercício (`default_sets`) e só muda com + e −, inclusive durante o treino. O histórico continua guardando só as concluídas.
+
+Testada no Expo Go: os 10 testes passaram. Título longo passou a diminuir em vez de cortar.
 
 ### Etapa 5: timer de descanso
 
@@ -221,6 +224,14 @@ Implementação (`src/database/workouts.ts`, esquema versão 2):
 - Rodando: contagem grande, "termina às HH:MM", barra de progresso, −15s / +15s / Pular.
 - Guardar o **horário de término**, não a contagem em memória. Notificação local e vibração com `expo-notifications`, com a tela bloqueada.
 - Ajustar ou pular reagenda/cancela a notificação. Padrão por exercício (`rest_seconds`).
+
+Implementação (`src/database/rest.ts`, `restNotification.ts`):
+
+- Estado na tabela `meta` (chave `rest`): término, duração, exercício e a série que o iniciou. Sobrevive a fechar o app.
+- Um descanso por vez: novo ✓ substitui o anterior. Finalizar, descartar ou o encerramento automático terminam o descanso. "Iniciar" na barra parada começa um sem série (e sem treino).
+- Aviso agendado com `expo-notifications` para o horário de término (identificador fixo, em fila: o pedido mais recente vence). Permissão pedida no primeiro descanso. Canal "Fim do descanso" com vibração e prioridade máxima; ícone monocromático próprio.
+- **Precisão com a tela bloqueada:** o `expo-notifications` só agenda exato com a permissão "Alarmes e lembretes" (`SCHEDULE_EXACT_ALARM`, declarada no `app.json`). No Android 12 e 13 ela vem concedida; no 14+ precisa ser ativada em Configurações › Apps › Fit Note. Sem ela, o aviso pode atrasar.
+- Exige novo build (módulo nativo e permissão). No Expo Go, o aviso usa as permissões do próprio Expo Go.
 
 ### Etapa 6: histórico com gráficos
 
@@ -243,8 +254,8 @@ Perguntar antes de implementar a parte afetada.
 
 | # | Pergunta | Afeta | Decisão |
 |---|---|---|---|
-| 1 | O ✓ inicia o timer automaticamente ou só pelo botão? (A descrição da Etapa 5 diz que começa no ✓) | 5 | |
-| 2 | ±15s vira o novo padrão do exercício ou vale só para aquele descanso? | 5 | |
+| 1 | O ✓ inicia o timer automaticamente ou só pelo botão? (A descrição da Etapa 5 diz que começa no ✓) | 5 | **Sim**, com Pular para quem não quiser. Desmarcar a série cancela o descanso que ela iniciou |
+| 2 | ±15s vira o novo padrão do exercício ou vale só para aquele descanso? | 5 | **Só para aquele descanso.** O padrão muda tocando no tempo da barra parada ("Descanso · 1:30") |
 | 3 | Tela de séries sem sessão: só leitura com convite, ou a primeira série inicia a sessão? | 4 | **A primeira série concluída (✓) inicia o treino.** Sem nenhum ✓ por 3 horas, é encerrado no horário da última série. Dá para descartar um treino iniciado por engano |
 | 4 | Carga única por exercício, com edição opcional por série? | 4 | **Sim.** A carga da série só aparece na linha quando difere da do exercício |
 | 5 | Incluir na Etapa 1 a exportação de segurança? | 1 | **Sim**, no primeiro commit |
