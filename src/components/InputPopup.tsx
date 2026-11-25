@@ -10,10 +10,11 @@ interface InputPopupProps {
     onSave: (inputText: string) => Promise<void>; // Quem chama fecha o modal quando der certo
     initialText?: string | undefined; // Optional prop for editing
     title: string;
+    hint?: string;
     keyboardType?: KeyboardTypeOptions;
 }
 
-export function InputPopup({ isOpen, onClose, onSave, initialText, title, keyboardType }: InputPopupProps) {
+export function InputPopup({ isOpen, onClose, onSave, initialText, title, hint, keyboardType }: InputPopupProps) {
     const [inputText, setInputText] = useState(initialText || '');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -65,6 +66,9 @@ export function InputPopup({ isOpen, onClose, onSave, initialText, title, keyboa
                             fontFamily={'Poppins_600SemiBold'}
                         />
                     </FormControl>
+                    {hint &&
+                        <Text mt={3} color="#D4D4D4" fontFamily={'Poppins_600SemiBold'} allowFontScaling={false}>{hint}</Text>
+                    }
                 </Modal.Body>
 
                 <Modal.Footer bg='#525252'>

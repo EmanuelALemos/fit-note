@@ -11,7 +11,7 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 | 1 | Correções sem mudar o modelo | Concluída e testada no Expo Go |
 | 2 | SQLite, repositório, migração, importação e exportação | Concluída e testada no Expo Go |
 | 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Primeiro build instalado e em uso; verificações do keystore pendentes (seção 9) |
-| 3 | Renomear e reordenar | Não iniciada |
+| 3 | Renomear e reordenar | Concluída e testada no Expo Go |
 | 4 | Sessões | Não iniciada |
 | 5 | Timer de descanso | Não iniciada |
 | 6 | Histórico com gráficos | Não iniciada |
@@ -190,6 +190,10 @@ Seção 9. PR pequeno, só de configuração, quando a Etapa 2 estiver pronta. A
 - Drag & drop com alça ⋮⋮ para exercícios (por treino) e treinos. Requer `GestureHandlerRootView` em `App.tsx`.
 - Card de treino: editar/excluir no menu ⋯; mostra "N exercícios · último: dia/data". Sem sessão real (antes da Etapa 4), mostra só "N exercícios".
 
+Implementação: `react-native-draggable-flatlist` (só JavaScript, usa os nativos já instalados); segurar a alça ⋮⋮ e arrastar. A ordem é recusada se a lista não bater com a do banco. Branch criada a partir da 2b, ainda não mesclada.
+
+**Ocorrência a observar:** no teste, ao levar um exercício do fim ao topo, algumas vezes os cards ficaram colados ou sobrepostos. Não se repetiu ao testar de novo e a causa não foi confirmada; Emanuel considerou um incidente pontual. Se voltar, suspeitar de `CellRendererComponent` (`heldTranslate` só zera no `onLayout`) e de `useCellTranslate` (cards fora da área visível ficam sem deslocamento), ambos da biblioteca.
+
 ### Etapa 4: sessões
 
 - Botão fixo "INICIAR TREINO" na tela de exercícios.
@@ -271,6 +275,8 @@ No Git: `*.jks`, `*.keystore`, `credentials.json`, `credentials/`, listas e back
 O primeiro build foi instalado no celular do Emanuel e os treinos importados; **o app novo já tem dados reais e não deve mais ser limpo nem desinstalado**. Emanuel optou por adiar as verificações abaixo e seguir para a Etapa 3.
 
 Feito: keystore baixado do EAS; o SHA-256 do arquivo é igual ao mostrado pelo EAS.
+
+O FitNote antigo foi removido do celular do Emanuel por decisão própria: o app novo é a fonte dos dados, e a lista e o backup em `Documents/FitNote-dados` são a reserva. No celular de Emanoela, o antigo continua até a extração e a conferência.
 
 Pendente, antes de instalar o segundo build:
 
