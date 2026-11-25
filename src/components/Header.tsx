@@ -33,6 +33,8 @@ export function Header({ onBackPress, onAddPress, title, subtitle, status }: Hea
                         fontSize={32}
                         fontFamily={'Poppins_600SemiBold'}
                         numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.6}
                         ellipsizeMode="tail"
                         allowFontScaling={false}
                         textAlign={'center'}
