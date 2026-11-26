@@ -331,6 +331,19 @@ $env:REACT_NATIVE_PACKAGER_HOSTNAME = "<IPv4 do Wi-Fi>"
 npx expo start --offline
 ```
 
+### Versões e tags
+
+- **Tag anotada  no commit de cada build instalado**, e só de builds realmente instalados. O commit vem de  (campo Commit).
+- Funcionalidades novas sobem o **Y** (2.0.0 → 2.1.0); correções sobem o **Z** (2.1.0 → 2.1.1). A versão fica em  no  e é alterada no PR, antes do build.
+- O  é independente: o EAS sobe sozinho a cada build ().
+- Push só da tag criada (), nunca .
+
+| Tag | Commit | Build | Conteúdo |
+|---|---|---|---|
+| v1.0.0 | (app antigo) | conta Expo antiga | Primeira versão |
+| v2.0.0 |  | , versionCode 2 | App novo , SQLite, correções da Etapa 1 |
+| v2.1.0 | pendente | após as Etapas 4–6 | Sessões, descanso, histórico |
+
 ## 10. Dados do app antigo: da lista ao app novo
 
 ### Formato da lista
