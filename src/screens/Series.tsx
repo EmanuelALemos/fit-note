@@ -197,6 +197,7 @@ export function Series({ navigation, route }: SeriesScreenProps) {
 
             <Header
                 title={exerciseName.toUpperCase()}
+                onTitlePress={() => navigation.navigate('history', { exerciseId, exerciseName })}
                 status={open ? `● ${open.trainingName} em andamento · ${elapsed}` : undefined}
                 onBackPress={() => navigation.goBack()}
             />

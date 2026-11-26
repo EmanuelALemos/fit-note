@@ -13,8 +13,8 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 | 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Primeiro build instalado e em uso; verificações do keystore pendentes (seção 9) |
 | 3 | Renomear e reordenar | Concluída e testada no Expo Go |
 | 4 | Sessões | Concluída e testada no Expo Go |
-| 5 | Timer de descanso | Implementada; aguardando teste no celular |
-| 6 | Histórico com gráficos | Não iniciada |
+| 5 | Timer de descanso | Concluída e testada no Expo Go; falta tela bloqueada no build |
+| 6 | Histórico com gráficos | Implementada; aguardando teste no celular |
 
 ## 1. Objetivo do app
 
@@ -235,12 +235,25 @@ Implementação (`src/database/rest.ts`, `restNotification.ts`):
 
 Testado no Expo Go (adb): ✓ inicia o descanso; ±15s e Pular; desmarcar cancela só o descanso daquela série; novo ✓ reinicia; status na lista de exercícios; padrão editável; aviso "Fim do descanso" publicado com o app em segundo plano. Falta o teste com a tela bloqueada, no build.
 
+**Ajuste pedido depois do teste:** ao abrir o app, se houver descanso em andamento, o aviso é reagendado (fechar à força cancela os avisos agendados). Se já terminou, nada é feito.
+
+**Build único depois da Etapa 6**, com as Etapas 4 a 6. Antes: backup do app real e cópia do keystore. Nele, testar tela bloqueada, vibração e uso real.
+
 ### Etapa 6: histórico com gráficos
 
 - Abre ao tocar no nome do exercício na tela de séries.
 - Seletor Carga / Repetições / Volume; períodos 1M / 3M / 6M / 1A.
 - Valor atual e variação no período; linha em `react-native-svg` com o recorde destacado.
 - Lista de sessões: data, treino de origem, carga, repetições.
+
+Implementação (`src/database/history.ts`, `src/utils/history.ts`, `HistoryChart`):
+
+- Só treinos finalizados e séries concluídas, de qualquer treino. A marca importada não entra no gráfico; aparece como nota ("Marca importada do app antigo").
+- **Carga** = maior carga do dia; **Repetições** = total do dia; **Volume** = soma de carga × repetições.
+- Valor atual = sessão mais recente do período; variação = mais recente − mais antiga do período.
+- Eixo do tempo proporcional às datas; marcas "redondas" no eixo vertical. **Recorde** = melhor de todos os tempos na métrica (em empate, o primeiro), ponto preenchido. Tocar ou arrastar no gráfico mostra a sessão mais próxima; sem toque, a mais recente.
+- Período padrão: 3M. Lista de sessões completa, da mais recente à mais antiga, com o recorde de carga marcado.
+- Uma só série na cor de destaque (contraste 6,7:1 sobre o card); sem legenda, pois o seletor nomeia a métrica.
 
 ### Fim do ciclo
 
@@ -317,6 +330,19 @@ Expo Go **2.31.2** (SDK 51; a versão da loja não serve; atualização automát
 $env:REACT_NATIVE_PACKAGER_HOSTNAME = "<IPv4 do Wi-Fi>"
 npx expo start --offline
 ```
+
+### Versões e tags
+
+- **Tag anotada `vX.Y.Z` no commit de cada build instalado**, e só de builds realmente instalados. O commit vem de `npx eas-cli build:view <id do build>` (campo Commit).
+- Funcionalidades novas sobem o **Y** (2.0.0 → 2.1.0); correções sobem o **Z** (2.1.0 → 2.1.1). A versão fica em `expo.version` no `app.json` e é alterada no PR, antes do build.
+- O `versionCode` é independente: o EAS sobe sozinho a cada build (`autoIncrement`).
+- Push só da tag criada (`git push origin vX.Y.Z`), nunca `--tags`.
+
+| Tag | Commit | Build | Conteúdo |
+|---|---|---|---|
+| v1.0.0 | (app antigo) | conta Expo antiga | Primeira versão |
+| v2.0.0 | `0116910` | `c3131d11`, versionCode 2 | App novo `com.emanuellemos.fitnote`, SQLite, correções da Etapa 1 |
+| v2.1.0 | pendente | após as Etapas 4–6 | Sessões, descanso, histórico |
 
 ## 10. Dados do app antigo: da lista ao app novo
 
