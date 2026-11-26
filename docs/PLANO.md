@@ -333,15 +333,15 @@ npx expo start --offline
 
 ### Versões e tags
 
-- **Tag anotada  no commit de cada build instalado**, e só de builds realmente instalados. O commit vem de  (campo Commit).
-- Funcionalidades novas sobem o **Y** (2.0.0 → 2.1.0); correções sobem o **Z** (2.1.0 → 2.1.1). A versão fica em  no  e é alterada no PR, antes do build.
-- O  é independente: o EAS sobe sozinho a cada build ().
-- Push só da tag criada (), nunca .
+- **Tag anotada `vX.Y.Z` no commit de cada build instalado**, e só de builds realmente instalados. O commit vem de `npx eas-cli build:view <id do build>` (campo Commit).
+- Funcionalidades novas sobem o **Y** (2.0.0 → 2.1.0); correções sobem o **Z** (2.1.0 → 2.1.1). A versão fica em `expo.version` no `app.json` e é alterada no PR, antes do build.
+- O `versionCode` é independente: o EAS sobe sozinho a cada build (`autoIncrement`).
+- Push só da tag criada (`git push origin vX.Y.Z`), nunca `--tags`.
 
 | Tag | Commit | Build | Conteúdo |
 |---|---|---|---|
 | v1.0.0 | (app antigo) | conta Expo antiga | Primeira versão |
-| v2.0.0 |  | , versionCode 2 | App novo , SQLite, correções da Etapa 1 |
+| v2.0.0 | `0116910` | `c3131d11`, versionCode 2 | App novo `com.emanuellemos.fitnote`, SQLite, correções da Etapa 1 |
 | v2.1.0 | pendente | após as Etapas 4–6 | Sessões, descanso, histórico |
 
 ## 10. Dados do app antigo: da lista ao app novo
