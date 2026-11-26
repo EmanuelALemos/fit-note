@@ -259,6 +259,8 @@ Implementação (`src/database/history.ts`, `src/utils/history.ts`, `HistoryChar
 
 README (bug 12, tecnologias, roadmap) e limpeza de dependências (19).
 
+**Feito:** README reescrito (sem "Estado Global"; funcionalidades, tecnologias, arquitetura, roadmap e como rodar atualizados). Removidas seis dependências sem uso: `@phosphor-icons/core`, `phosphor-react-native`, `@react-native-community/masked-view`, `expo-status-bar`, `react-native-responsive-fontsize` e `react-native-size-matters`. Mantidas: `react-dom` (exigida pelo native-base), `react-native-screens` e `react-native-reanimated` (exigidas pela navegação e pela lista arrastável). Os aliases sem pasta (`@dtos`, `@services`, `@hooks`, `@contexts`) ficam, pela regra de manter os aliases. Imports sem uso: `tsc --noUnusedLocals --noUnusedParameters` passa. Remover pacotes nativos exige build novo: entram no próximo.
+
 ### Depois, fora do escopo
 
 Notas por exercício, substituir exercício só na sessão do dia, atualização do Expo SDK, troca do native-base.

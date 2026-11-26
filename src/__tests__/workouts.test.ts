@@ -23,7 +23,7 @@ const view = (id = supino) => workouts.getExercise(id).sets.map(set => [set.load
 // Um treino inteiro: repetições por série, com a carga atual.
 function train(trainingId: number, exerciseId: number, reps: number[]) {
     const session = workouts.start(trainingId);
-    reps.forEach((value, index) => {
+    reps.forEach((_, index) => {
         minutes(3);
         workouts.setDone(trainingId, exerciseId, index + 1, true, reps.map(item => ({
             reps: item, loadKg: workouts.getExercise(exerciseId).loadKg, done: false,

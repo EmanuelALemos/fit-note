@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Image } from 'native-base';
-import { FlatList, Alert, TouchableOpacity } from 'react-native';
+import { FlatList, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 
