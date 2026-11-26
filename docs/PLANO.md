@@ -13,8 +13,8 @@ Marcação usada: **[proposta]** = sugestão que surgiu na leitura do código e 
 | 2b | App novo: identidade, conta, keystore e primeiro build (seção 9) | Primeiro build instalado e em uso; verificações do keystore pendentes (seção 9) |
 | 3 | Renomear e reordenar | Concluída e testada no Expo Go |
 | 4 | Sessões | Concluída e testada no Expo Go |
-| 5 | Timer de descanso | Concluída e testada no Expo Go; falta tela bloqueada no build |
-| 6 | Histórico com gráficos | Implementada; aguardando teste no celular |
+| 5 | Timer de descanso | Concluída e testada no build 2.1.0 (inclui tela bloqueada) |
+| 6 | Histórico com gráficos | Concluída e testada no build 2.1.0 |
 
 ## 1. Objetivo do app
 
@@ -342,7 +342,7 @@ npx expo start --offline
 |---|---|---|---|
 | v1.0.0 | (app antigo) | conta Expo antiga | Primeira versão |
 | v2.0.0 | `0116910` | `c3131d11`, versionCode 2 | App novo `com.emanuellemos.fitnote`, SQLite, correções da Etapa 1 |
-| v2.1.0 | pendente | após as Etapas 4–6 | Sessões, descanso, histórico |
+| v2.1.0 | `ebb6357` | `eaca7704`, versionCode 3 | Renomear e reordenar, sessões, timer de descanso, histórico com gráficos |
 
 ## 10. Dados do app antigo: da lista ao app novo
 
